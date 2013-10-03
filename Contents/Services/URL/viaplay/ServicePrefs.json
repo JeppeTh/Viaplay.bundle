@@ -1,0 +1,22 @@
+[
+  {
+    "id": "site",
+    "type": "enum",
+    "label": "Site",
+    "values": [ "DK", "SE", "NO" ],
+    "default": "DK"
+  },
+  {
+    "id":"username",
+    "type":"text",
+    "label":"Username",
+    "default":"",
+  },
+  {
+    "id":"password",
+    "type":"text",
+    "option":"hidden",
+    "label":"Password",
+    "default":"",
+  }
+]

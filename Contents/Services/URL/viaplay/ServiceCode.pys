@@ -1,0 +1,117 @@
+import re, shutil
+
+IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 5_1 like Mac OS X; en-us) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B176 Safari/7534.48.3'
+
+SAMSUNG_UA = 'Mozilla/5.0 (SmartHub; SMART-TV; U; Linux/SmartTV; Maple2012) AppleWebKit/534.7 (KHTML, like Gecko) SmartTV Safari/534.7'
+
+BANDWIDTH_PATTERN = Regex('#EXT.*BANDWIDTH=([0-9]+)')
+
+####################################################################################################
+def MetadataObjectForURL(url):
+
+    # Request the URL
+    page = HTML.ElementFromURL(url, cacheTime=7200)
+
+    # Extract the details available directly form the page.
+    title = page.xpath("//head//meta[@property='og:title']")[0].get('content')
+    description = page.xpath("//head//meta[@property='og:description']")[0].get('content')
+    thumb = page.xpath("//head//meta[@property='og:image']")[0].get('content')
+
+    return VideoClipObject(
+        title = title,
+        summary = description,
+        thumb = thumb)
+
+####################################################################################################
+def MediaObjectsForURL(url):
+    return [
+      MediaObject(
+                  parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url = url, platform = Client.Platform)))],
+                  audio_channels = 2
+      )
+    ]
+
+def PlayVideo(url, platform):
+    # return Redirect("http://iphone.cdn.viasat.tv/iphone/008/00808/S80840_artofgettingby_xk2wmsvzzsg3quyi_iphone.m3u8")
+
+    base_url = re.sub("(.*viaplay\\.[^/]+).*", "\\1", url)
+
+    email    = String.Quote(Prefs['username'])
+    password = String.Quote(Prefs['password'])
+    authUrl  = "https://lhr2.ops.entriq.net/services/payment/paymentws.svc/Ajax/Loginbyget?request=%7B%22Email%22%3A%22" + email + "%22%2C%22Password%22%3A%22" + password + "%22%2C%22AccountId%22%3A%22viasat%22%2C%22Cookies%22%3A%22%22%7D"
+    authPage  = JSON.ObjectFromURL(authUrl)
+    if authPage['d']['IsSuccessful'] == False:
+        raise Exception("Login Failed")
+
+    myCookie  = "VCDataType=json;OPS=" + authPage['d']['Cookies']
+    tokenUrl  = base_url + '/ahah/getCookieHashAjax'
+    tokenData = HTTP.Request(tokenUrl, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
+    myCookie  = myCookie + "; token=" + tokenData
+
+    page = HTML.ElementFromURL(url)
+
+    id = page.xpath("//div[@id='productSelect']")[0].get('data-product-id')
+    url = base_url + '/ahah/videoData?id=' + id
+    data = JSON.ObjectFromURL(url, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
+
+    # [] is returned if the data isn't available
+    if (isinstance(data, list)):
+        Log('Unable to be source data')
+        return None
+    
+    url = data['source']
+
+    if len(url) == 0:
+        raise Ex.MediaNotAvailable
+
+    original_playlist = HTTP.Request(url).content
+    
+    url = url[:url.rindex("/")]
+    
+    new_playlist = RegeneratePlaylist(original_playlist.splitlines(), url)
+    
+    if platform == ClientPlatform.iOS:
+        return Redirect(data['source'])
+    else:
+        return new_playlist
+
+######################################
+# Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
+# so we are manually creating the playlist with the max bandwidth
+######################################
+def RegeneratePlaylist(playlist, url):
+    max_bandwidth = 0
+    max_bandwidth_meta = ""
+    max_bandwidth_url = ""
+    
+    reading = False
+    
+    new_playlist = '#EXTM3U\n'
+    for line in playlist:
+        bandwidth = BANDWIDTH_PATTERN.search(line)
+        if not bandwidth:
+            if not reading:
+                continue
+            else:
+                if not line.startswith('http'):
+                    max_bandwidth_url = url + '/' + line
+                else:
+                    max_bandwidth_url = line
+                reading = False
+        else:
+            current_bandwidth = int(bandwidth.group(1))
+        
+            if current_bandwidth > max_bandwidth:
+                max_bandwidth = current_bandwidth
+                max_bandwidth_meta = line
+                reading = True
+    
+
+    new_playlist = new_playlist + max_bandwidth_meta + '\n'
+    new_playlist = new_playlist + max_bandwidth_url + '\n'
+
+    return new_playlist
+
+####################################################################################################
+def NormalizeURL(url):
+    return url
