@@ -3,6 +3,12 @@ Viaplay Plex Plugin
 
 Provides access to the content available from Viaplay.
 
+NOTE!!!
+Password is visible in and/or
+...\Plex Media Server\Logs\PMS Plugin Logs\com.plexapp.plugins.viaplay.log
+...\Plex Media Server\Logs\PMS Plugin Logs\com.plexapp.system.log
+NOTE!!!
+
 # Installation
 
 With Git (Recommended):
