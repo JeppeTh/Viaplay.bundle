@@ -12,7 +12,7 @@
 			</array>
 			<key>URLPatterns</key>
 			<array>
-				<string>http://viaplay.(se|no|dk).*</string>
+				<string>http://viaplay.(se|no|dk|fi).*</string>
 			</array>
 		</dict>
 	</dict>

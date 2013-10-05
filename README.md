@@ -3,23 +3,17 @@ Viaplay Plex Plugin
 
 Provides access to the content available from Viaplay.
 
-NOTE!!!
-Password is visible in and/or
-...\Plex Media Server\Logs\PMS Plugin Logs\com.plexapp.plugins.viaplay.log
-...\Plex Media Server\Logs\PMS Plugin Logs\com.plexapp.system.log
-NOTE!!!
-
 # Installation
 
 With Git (Recommended):
 
     $ cd ~/Library/Application Support/Plex Media Server/Plug-ins/
-    $ git clone git://github.com/hitolaus/Viaplay.bundle.git
+    $ git clone git://github.com/JeppeTh/Viaplay.bundle.git
 
 With Zip (Only if Git scares you): 
 Download the ZIP and extract it:
 
-    $ curl -k -L https://github.com/hitolaus/Viaplay.bundle/zipball/master > /tmp/viaplay.zip
+    $ curl -k -L https://github.com/JeppeTh/Viaplay.bundle/zipball/master > /tmp/viaplay.zip
     $ cd ~/Library/Application Support/Plex Media Server/Plug-ins/
     $ unzip /tmp/viaplay.zip
 
@@ -51,6 +45,7 @@ This project makes use of the following external dependencies:
 + Added Sport Category
 + Added User Logon
 + Added Season support amongst TV Shows
++ Added Finland support
 
 22/11/2012:
 + Added iOS support

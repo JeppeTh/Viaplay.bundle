@@ -3,8 +3,8 @@
     "id": "site",
     "type": "enum",
     "label": "Site",
-    "values": [ "DK", "SE", "NO" ],
-    "default": "DK"
+    "values": ["SE", "DK", "NO", "FI"],
+    "default": "SE"
   },
   {
     "id":"username",
