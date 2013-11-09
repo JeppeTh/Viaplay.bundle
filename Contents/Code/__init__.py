@@ -412,4 +412,4 @@ def BrowseMovies(url,title2,sort=False):
 
 
 def baseUrl():
-    return 'http://viaplay.' + Prefs['site'].lower()
+    return 'http://my.viaplay.' + Prefs['site'].lower()
