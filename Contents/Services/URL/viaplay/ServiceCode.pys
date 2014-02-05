@@ -9,18 +9,53 @@ BANDWIDTH_PATTERN = Regex('#EXT.*BANDWIDTH=([0-9]+)')
 ####################################################################################################
 def MetadataObjectForURL(url):
 
+    Login()
+
     # Request the URL
-    page = HTML.ElementFromURL(url, cacheTime=7200)
+    item = MyJson(url)
+    item = item['_embedded']['viaplay:blocks']
+    item = item[0]['_embedded']['viaplay:product']
+    item_type = item['type']
 
-    # Extract the details available directly form the page.
-    title = page.xpath("//head//meta[@property='og:title']")[0].get('content')
-    description = page.xpath("//head//meta[@property='og:description']")[0].get('content')
-    thumb = page.xpath("//head//meta[@property='og:image']")[0].get('content')
+    try:
+        thumb = item['content']['images']['landscape']['url']
+    except:
+        thumb = None
 
-    return VideoClipObject(
-        title = title,
-        summary = description,
-        thumb = thumb)
+    air_date = item['system']['availability']['start']
+    item     = item['content']
+    try:
+        duration = int(item['duration']['milliseconds'])
+    except:
+        duration = None
+    thumb = None
+    if 'boxart' in item['images']:
+        thumb = item['images']['boxart']['url']
+    if 'landscape' in item['images']:
+        thumb   = item['images']['landscape']['url']
+
+    if item_type == 'episode':
+        if 'episodeNumber' in item['series']:
+            index = int(item['series']['episodeNumber'])
+        else:
+            index = None
+        return EpisodeObject(
+            title    = unicode(item['title']),
+            show     = unicode(item['series']['title']),
+            summary  = unicode(item['synopsis']),
+            duration = duration,
+            thumb    = thumb,
+            index    = index,
+            season   = int(item['series']['season']['seasonNumber']),
+            originally_available_at = Datetime.ParseDate(air_date).date()
+            )
+    else:
+        return VideoClipObject(
+            title    = unicode(item['title']),
+            summary  = unicode(item['synopsis']),
+            thumb    = thumb,
+            duration = duration
+            )
 
 ####################################################################################################
 def MediaObjectsForURL(url):
@@ -32,47 +67,29 @@ def MediaObjectsForURL(url):
     ]
 
 def PlayVideo(url, platform):
-    # return Redirect("http://iphone.cdn.viasat.tv/iphone/008/00808/S80840_artofgettingby_xk2wmsvzzsg3quyi_iphone.m3u8")
+    Login()
 
-    base_url = re.sub("(.*viaplay\\.[^/]+).*", "\\1", url)
+    item = MyJson(url)
+    item = item['_embedded']['viaplay:blocks']
+    item_type = item[0]['_embedded']['viaplay:product']['type']
+    item = item[0]['_embedded']['viaplay:product']
+    product = item['system']['productId']
 
-    email    = String.Quote(Prefs['username'])
-    password = String.Quote(Prefs['password'])
-    authUrl  = "https://lhr2.ops.entriq.net/services/payment/paymentws.svc/Ajax/Loginbyget?request=%7B%22Email%22%3A%22" + email + "%22%2C%22Password%22%3A%22" + password + "%22%2C%22AccountId%22%3A%22viasat%22%2C%22Cookies%22%3A%22%22%7D"
-    authPage  = JSON.ObjectFromURL(authUrl)
-    if authPage['d']['IsSuccessful'] == False:
-        raise Exception("Login Failed")
+    Log("JTDEBUG productId:%i" % product)
 
-    myCookie  = "VCDataType=json;OPS=" + authPage['d']['Cookies']
-    tokenUrl  = base_url + '/ahah/getCookieHashAjax'
-    tokenData = HTTP.Request(tokenUrl, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
-    myCookie  = myCookie + "; token=" + tokenData
+    url = GetStream(product)
 
-    page = HTML.ElementFromURL(url)
-
-    id = page.xpath("//div[@id='productSelect']")[0].get('data-product-id')
-    url = base_url + '/ahah/videoData?id=' + id
-    data = JSON.ObjectFromURL(url, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
-
-    # [] is returned if the data isn't available
-    if (isinstance(data, list)):
-        Log('Unable to be source data')
-        return None
-    
-    url = data['source']
+    Log("JTDEBUG url:%s" % url)
 
     if len(url) == 0:
         raise Ex.MediaNotAvailable
-
-    original_playlist = HTTP.Request(url).content
-    
-    url = url[:url.rindex("/")]
-    
-    new_playlist = RegeneratePlaylist(original_playlist.splitlines(), url)
     
     if platform == ClientPlatform.iOS:
-        return Redirect(data['source'])
+        return Redirect(url)
     else:
+        original_playlist = HTTP.Request(url).content
+        new_playlist      = RegeneratePlaylist(original_playlist.splitlines(), url[:url.rindex("/")])
+        Log("JTDEBUG new_playlist:%s" % new_playlist)
         return new_playlist
 
 ######################################
@@ -115,3 +132,62 @@ def RegeneratePlaylist(playlist, url):
 ####################################################################################################
 def NormalizeURL(url):
     return url
+
+def Login():
+    site = Prefs['site'].lower()
+    device_key = GetDeviceKey(site)
+    api = "https://login.viaplay." + site + "/api"
+    url = api + "/persistentLogin/v1?deviceKey=" + device_key + "&returnurl=http%3A%2F%2Fcontent.viaplay." + site + "%2F" + device_key
+    try:
+        loginPage = MyJson(url)
+        loginResult = loginPage['success']
+    except:
+        loginResult = False
+    if loginResult == False:
+        email    = String.Quote(Prefs['username'])
+        password = String.Quote(Prefs['password'])
+        authUrl = api + "/login/v1?deviceKey=" + device_key + "&returnurl=http%3A%2F%2Fcontent.viaplay."+ site + "%2F" + device_key + "&username=" + email + "&password="+ password + "&persistent=true"
+        loginPage  = MyJson(authUrl)
+        if loginPage['success'] == False:
+            raise Exception("Login Failed")
+
+    if Prefs['ageVerification'] == True:
+        agePage = MyJson(api + "/ageVerification/v1?deviceKey=" + device_key + "&returnurl=https%3A%2F%2Fcontent.viaplay." + site + "%2F" + device_key)
+        if agePage['success'] == False:
+            raise Exception("Age Verification Failed")
+
+def MyJson(url):
+    return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
+
+def GetDeviceKey(site):
+    # return "web-" + site
+    return "androidnodrm-" + site
+
+def OldGetStream(url):
+
+    base_url = re.sub("(.*viaplay\\.[^/]+).*", "\\1", url)
+
+    email    = String.Quote(Prefs['username'])
+    password = String.Quote(Prefs['password'])
+    authUrl  = "https://lhr2.ops.entriq.net/services/payment/paymentws.svc/Ajax/Loginbyget?request=%7B%22Email%22%3A%22" + email + "%22%2C%22Password%22%3A%22" + password + "%22%2C%22AccountId%22%3A%22viasat%22%2C%22Cookies%22%3A%22%22%7D"
+    authPage  = JSON.ObjectFromURL(authUrl)
+    if authPage['d']['IsSuccessful'] == False:
+        raise Exception("Login Failed")
+
+    myCookie  = "VCDataType=json;OPS=" + authPage['d']['Cookies']
+    tokenUrl  = base_url + '/ahah/getCookieHashAjax'
+    tokenData = HTTP.Request(tokenUrl, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
+    myCookie  = myCookie + "; token=" + tokenData
+
+    page = HTML.ElementFromURL(url)
+
+    id = page.xpath("//div[@id='productSelect']")[0].get('data-product-id')
+    url = base_url + '/ahah/videoData?id=' + id
+    data = JSON.ObjectFromURL(url, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
+
+    # [] is returned if the data isn't available
+    if (isinstance(data, list)):
+        Log('Unable to be source data')
+        return None
+    
+    return data['source']
