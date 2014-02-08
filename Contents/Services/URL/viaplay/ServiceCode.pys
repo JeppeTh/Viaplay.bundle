@@ -1,4 +1,6 @@
 import re, shutil
+from lxml.etree import HTMLParser, parse, tostring
+import StringIO
 
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 5_1 like Mac OS X; en-us) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B176 Safari/7534.48.3'
 
@@ -91,6 +93,16 @@ def PlayVideo(url, platform):
         new_playlist      = RegeneratePlaylist(original_playlist.splitlines(), url[:url.rindex("/")])
         Log("JTDEBUG new_playlist:%s" % new_playlist)
         return new_playlist
+
+def GetStream(product):
+    site = Prefs['site'].lower()
+    stream_url = "http://play.viaplay." + site + "/api/playlist/v1?deviceKey="+ GetDeviceKey(site) + "&productId=%s" % product
+    # Some viaplay xml is broken, so parse it with a more lenient HTML parser instead
+    data = HTTP.Request(stream_url).content
+    parser = HTMLParser()
+    tree = parse(StringIO.StringIO(data), parser)
+    url = tree.xpath("/html/body/playlist/entries/entry/url")[0].text
+    return url
 
 ######################################
 # Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
