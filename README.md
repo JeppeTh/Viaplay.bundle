@@ -3,8 +3,6 @@ Viaplay Plex Plugin
 
 Provides access to the content available from Viaplay.
 
-!!!Currently it doesn't work!!
-
 # Installation
 
 With Git (Recommended):
