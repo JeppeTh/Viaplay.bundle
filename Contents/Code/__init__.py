@@ -6,6 +6,7 @@
 # http://iphone.cdn.viasat.tv/iphone/009/00916/S91659_djurakuten_jhtrvgxbmmxsz44a_iphone.m3u8'
 ####################################################################################################
 import re
+import datetime
 VIDEO_PREFIX = "/video/viaplay"
 
 ART = 'art-default.jpg'
@@ -410,7 +411,24 @@ def MakeMovieObject(item=[]):
         thumb = art
     if 'boxart' in content['images']:
         thumb = content['images']['boxart']['url']
-    return MovieObject(title    = content['title'],
+
+    title = content['title']
+    if "epg" in item:
+        start_time = datetime.datetime.strptime(item["epg"]["start"], "%Y-%m-%dT%H:%M:%S.000Z")
+        end_time = datetime.datetime.strptime(item["epg"]["streamEnd"], "%Y-%m-%dT%H:%M:%S.000Z")
+        now = datetime.datetime.now()
+
+        if start_time < now and now < end_time:
+            time = "Live"
+        else:
+            if start_time.strftime("%Y%m%d") == now.strftime("%Y%m%d"):
+                time = start_time.strftime("today at %H:%M")
+            else:
+                time = start_time.strftime("%b %d at %H:%M")
+
+        title = "%s (%s)" % (title, time)
+
+    return MovieObject(title    = title,
                        summary  = content['synopsis'],
                        thumb    = thumb,
                        art      = art,
