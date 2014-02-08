@@ -68,8 +68,8 @@ def MainMenu():
                                    Callback(Section, title2=title, url=section['href']),
                                    )
                    )
-    oc.add(CreateDirObject("Logout",
-                           Callback(Logout),
+    oc.add(CreateDirObject("Login",
+                           Callback(ReLogin),
                            )
            )
     oc.add(InputDirectoryObject(key = Callback(Search), 
@@ -316,19 +316,29 @@ def Search (query):
                    )
         return oc
 
+@route('/video/viaplay/continuesearch', 'GET')
+def ContinueSearch (title2, search_type, next_url):
+    sections = MyJson(next_url)
+    if 'next' in sections['_links']:
+        next_url = sections['_links']['next']['href']
+    else:
+        next_url = None
+    return BrowseHits((title2, search_type, sections['_embedded']['viaplay:products'], next_url))
+
 def BrowseHits(hit):
     (title2, search_type, objects, next_url) = hit
     Log("JTDEBUG BrowseHits(%s %s %d %s)" % (title2, search_type, len(objects), next_url))
     oc = ObjectContainer(title2=title2+" Search hits")
     if search_type == 'episode':
         for episode in objects:
-            content        = episode['content']
+            content = episode['content']
+            title   = unicode(content['title'])
+            if 'season' in content['series']:
+                title = title + " - " + SEASON_TRANSLATED + \
+                    " %i" % content['series']['season']['seasonNumber']
             if 'episodeNumber' in content['series']:
-                episode_number = content['series']['episodeNumber']
-            else:
-                episodeNumber  = '?'
-            title          = unicode(content['title'])
-            title = title + " - " + EPISODE_TRANSLATED + " %i" % episode_number
+                title = title + " - " + EPISODE_TRANSLATED + \
+                    " %i" % content['series']['episodeNumber']
             oc.add(MakeEpisodeObject(title, episode))
 
     elif search_type == 'movie' or search_type == 'sport':
@@ -336,9 +346,8 @@ def BrowseHits(hit):
             oc.add(MakeMovieObject(movie))
 
     if next_url != None:
-        # A bit ugly to re-use the Category function - and episode titles aren't fixed as above
         oc.add(CreateDirObject("Continue...",
-                               Callback(Category, title2=title2, url=next_url, sort=False),
+                               Callback(ContinueSearch, title2=title2, search_type=search_type, next_url=next_url),
                                ))
     return oc
 
@@ -384,11 +393,12 @@ def Login():
         if agePage['success'] == False:
             raise Exception("Age Failed")
 
-def Logout():
+def ReLogin():
     site = Prefs['site'].lower()
     url = "https://login.viaplay."+site+"/api/logout/v1?deviceKey=" + GetDeviceKey(site)
     MyJson(url)
-    return MessageContainer("Logout", "Logged Out")
+    Login()
+    return MessageContainer("Login", "Logged In")
 
 def GetDeviceKey(site):
     # return "web-" + site
@@ -412,29 +422,34 @@ def MakeMovieObject(item=[]):
     if 'boxart' in content['images']:
         thumb = content['images']['boxart']['url']
 
-    title = content['title']
-    if "epg" in item:
-        start_time = datetime.datetime.strptime(item["epg"]["start"], "%Y-%m-%dT%H:%M:%S.000Z")
-        end_time = datetime.datetime.strptime(item["epg"]["streamEnd"], "%Y-%m-%dT%H:%M:%S.000Z")
-        now = datetime.datetime.now()
-
-        if start_time < now and now < end_time:
-            time = "Live"
-        else:
-            if start_time.strftime("%Y%m%d") == now.strftime("%Y%m%d"):
-                time = start_time.strftime("today at %H:%M")
-            else:
-                time = start_time.strftime("%b %d at %H:%M")
-
-        title = "%s (%s)" % (title, time)
-
-    return MovieObject(title    = title,
+    return MovieObject(title    = AddEpgInfo(content['title'], item),
                        summary  = content['synopsis'],
                        thumb    = thumb,
                        art      = art,
                        url      = item['_links']['viaplay:page']['href'],
                        duration = duration
                        )
+
+def AddEpgInfo(title, item=[]):
+    if 'epg' in item:
+        start_time = datetime.datetime.strptime(item['epg']['start'], '%Y-%m-%dT%H:%M:%S.000Z')
+        end_time = datetime.datetime.strptime(item['epg']['streamEnd'], '%Y-%m-%dT%H:%M:%S.000Z')
+        now = datetime.datetime.now()
+
+        if start_time < now and now < end_time:
+            if '(' in title:
+                # Rerun can't be live
+                return title
+            else:
+                time = 'Live'
+        else:
+            if start_time.strftime('%Y%m%d') == now.strftime('%Y%m%d'):
+                time = start_time.strftime('Today at %H:%M')
+            else:
+                time = start_time.strftime('%A %b %d at %H:%M')
+
+        return '%s (%s)' % (title, time)
+    return title
 
 def MakeEpisodeObject(title, episode=[]):
     art = R(ART)
@@ -450,10 +465,14 @@ def MakeEpisodeObject(title, episode=[]):
         index = int(content['series']['episodeNumber'])
     else:
         index = None
+    try:
+        duration = int(content['duration']['milliseconds'])
+    except:
+        duration = None
     return EpisodeObject(title    = unicode(title),
                          show     = unicode(content['series']['title']),
                          summary  = unicode(content['synopsis']),
-                         duration = int(content['duration']['milliseconds']),
+                         duration = duration,
                          thumb    = thumb,
                          art      = art,
                          url      = episode['_links']['viaplay:page']['href'],

@@ -79,11 +79,12 @@ def PlayVideo(url, platform):
 
     Log("JTDEBUG productId:%i" % product)
 
-    url = GetStream(product)
-
-    Log("JTDEBUG url:%s" % url)
-
-    if len(url) == 0:
+    try:
+        url = GetStream(product)
+        Log("JTDEBUG url:%s" % url)
+        if len(url) == 0:
+            raise Ex.MediaNotAvailable
+    except:
         raise Ex.MediaNotAvailable
     
     if platform == ClientPlatform.iOS:

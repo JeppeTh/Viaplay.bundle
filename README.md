@@ -41,11 +41,14 @@ This project makes use of the following external dependencies:
 - Metro UI Dock Icon Set <a href="http://dakirby309.deviantart.com/gallery/#/d4n4w3q">http://dakirby309.deviantart.com/gallery/#/d4n4w3q</a>
 
 # Changes
+
+08/02/2014:
++ Also streaming should be working - thx wouterdebie!
+
 06/02/2014:
 + Major changes to adapt to the new viaplay
 + Only browsing works in this version.
 
-# Changes
 03/10/2013:
 + Made it work again
 + Added Search function
