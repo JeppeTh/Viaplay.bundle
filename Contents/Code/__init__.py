@@ -57,27 +57,34 @@ def Start():
 @handler(VIDEO_PREFIX, L('Title'), ICON, ART)
 def MainMenu():
 
-    Login()
-
     oc = ObjectContainer()
-    sections = MyJson(baseUrl())
-    for section in sections['_links']['viaplay:sections']:
-        if section['type'] == 'vod':
-            title = unicode(section['title'])
-            oc.add(CreateDirObject(title,
-                                   Callback(Section, title2=title, url=section['href']),
-                                   )
-                   )
-    oc.add(CreateDirObject("Login",
-                           Callback(ReLogin),
-                           )
-           )
-    oc.add(InputDirectoryObject(key = Callback(Search), 
-                                title=SEARCH_TRANSLATED, 
-                                prompt=SEARCH_TRANSLATED,
-                                thumb = R('icon-search.png')
-                                )
-           )
+    try:
+        Login()
+        sections = MyJson(baseUrl())
+        for section in sections['_links']['viaplay:sections']:
+            if section['type'] == 'vod':
+                title = unicode(section['title'])
+                oc.add(CreateDirObject(title,
+                                       Callback(Section, title2=title, url=section['href']),
+                                       )
+                       )
+        oc.add(CreateDirObject("Re-Login",
+                               Callback(ReLogin),
+                               )
+               )
+        oc.add(InputDirectoryObject(key = Callback(Search), 
+                                    title=SEARCH_TRANSLATED, 
+                                    prompt=SEARCH_TRANSLATED,
+                                    thumb = R('icon-search.png')
+                                    )
+               )
+    except:
+        oc.message = "Login failed"
+        oc.add(CreateDirObject("Login",
+                               Callback(MainMenu),
+                               )
+               )
+
     oc.add(PrefsObject(title = L('Preferences Menu Title'), thumb = R(ICON_PREFS)))
     return oc
 
@@ -89,7 +96,7 @@ def Section(title2, url):
 
     if len(sections['_embedded']['viaplay:blocks']) > 0:
         for block in sections['_embedded']['viaplay:blocks']:
-            if block["type"] != 'list':
+            if block["type"] != 'list' or not '_links' in block:
                 continue
             title = unicode(block['title'])
             if 'viaplay:seeAll' in block['_links']:
@@ -134,12 +141,12 @@ def ContinueCategory(oc, next_url):
     try:
         base_url = re.sub("(.+)\\?.*", "\\1", next_url)
         sections = MyJson(next_url)
-    except:
+    except Exception as e:
         if len(oc) > 0:
             return oc
         else:
             oc.header  = "Sorry"
-            oc.message = "HTTP request failed"
+            oc.message = "%s" % e
             return oc
 
     ## Check for subcategories
@@ -229,9 +236,9 @@ def Serie(title2, url):
 
     try:
         serie = MyJson(url)
-    except:
+    except Exception as e:
         oc.header  = "Sorry"
-        oc.message = "No Series found."
+        oc.message = "No Series found. %s" % e
         return oc
 
     for season in serie['_embedded']['viaplay:blocks']:
@@ -268,12 +275,12 @@ def Season(title2, url, alt=[]):
     try:
         season = MyJson(url)
         episodes = season['_embedded']['viaplay:products']
-    except:
+    except Exception as e:
         if len(alt) > 0:
             episodes = alt
         else:
             oc.header  = "Sorry"
-            oc.message = "No Seasons found."
+            oc.message = "No Seasons found. %s" % e
             return oc
 
     for episode in episodes:
@@ -397,8 +404,7 @@ def ReLogin():
     site = Prefs['site'].lower()
     url = "https://login.viaplay."+site+"/api/logout/v1?deviceKey=" + GetDeviceKey(site)
     MyJson(url)
-    Login()
-    return MessageContainer("Login", "Logged In")
+    return MainMenu()
 
 def GetDeviceKey(site):
     # return "web-" + site

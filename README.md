@@ -39,6 +39,8 @@ This project makes use of the following external dependencies:
 - Metro UI Dock Icon Set <a href="http://dakirby309.deviantart.com/gallery/#/d4n4w3q">http://dakirby309.deviantart.com/gallery/#/d4n4w3q</a>
 
 # Changes
+12/02/2014:
++ Fixed bug which made it impossible to run plugin at initial installation.
 
 08/02/2014:
 + Also streaming should be working - thx wouterdebie!
