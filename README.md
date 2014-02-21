@@ -39,6 +39,11 @@ This project makes use of the following external dependencies:
 - Metro UI Dock Icon Set <a href="http://dakirby309.deviantart.com/gallery/#/d4n4w3q">http://dakirby309.deviantart.com/gallery/#/d4n4w3q</a>
 
 # Changes
+22/02/2014:
++ Remove hardcoded url for fetching stream (may require PIN to be added in config)
++ Fixed search for Samsung Plex
++ Added support for PIN (no pop-up though).
+
 12/02/2014:
 + Fixed bug which made it impossible to run plugin at initial installation.
 

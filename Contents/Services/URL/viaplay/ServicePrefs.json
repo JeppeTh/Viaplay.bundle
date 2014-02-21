@@ -20,6 +20,13 @@
     "default":"",
   },
   {
+    "id":"pin",
+    "type":"text",
+    "option":"hidden",
+    "label":"PIN",
+    "default":"",
+  },
+  {
     "id": "ageVerification",
     "type": "bool",
     "label": "I'm over 18",

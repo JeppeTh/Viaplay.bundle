@@ -224,7 +224,7 @@ def LoopCategory(oc, items=[], next_url=None):
     if len(oc) < 30 and next_url != None:
         return ContinueCategory(oc, next_url)
     elif next_url != None:
-        oc.add(CreateDirObject("Continue...",
+        oc.add(CreateDirObject("More...",
                                Callback(Category, title2=oc.title2, url=next_url, sort=False),
                                ))
     return oc
@@ -289,7 +289,6 @@ def Season(title2, url, alt=[]):
         oc.add(MakeEpisodeObject(title, episode))
     return oc
 
-@route('/video/viaplay/search', 'GET')
 def Search (query):
     Log("JTDEBUG Search (%s)" % query)
     oc = ObjectContainer(title2='Search')
@@ -353,7 +352,7 @@ def BrowseHits(hit):
             oc.add(MakeMovieObject(movie))
 
     if next_url != None:
-        oc.add(CreateDirObject("Continue...",
+        oc.add(CreateDirObject("More...",
                                Callback(ContinueSearch, title2=title2, search_type=search_type, next_url=next_url),
                                ))
     return oc

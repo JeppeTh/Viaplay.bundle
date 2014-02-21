@@ -71,39 +71,34 @@ def MediaObjectsForURL(url):
 def PlayVideo(url, platform):
     Login()
 
-    item = MyJson(url)
-    item = item['_embedded']['viaplay:blocks']
-    item_type = item[0]['_embedded']['viaplay:product']['type']
-    item = item[0]['_embedded']['viaplay:product']
-    product = item['system']['productId']
-
-    Log("JTDEBUG productId:%i" % product)
-
     try:
-        url = GetStream(product)
-        Log("JTDEBUG url:%s" % url)
-        if len(url) == 0:
+        stream_url = []
+        stream_url = GetStream(url)
+        if len(stream_url) == 0:
             raise Ex.MediaNotAvailable
-    except:
+    except Exception e:
         raise Ex.MediaNotAvailable
     
     if platform == ClientPlatform.iOS:
-        return Redirect(url)
+        return Redirect(stream_url)
     else:
-        original_playlist = HTTP.Request(url).content
-        new_playlist      = RegeneratePlaylist(original_playlist.splitlines(), url[:url.rindex("/")])
-        Log("JTDEBUG new_playlist:%s" % new_playlist)
+        original_playlist = HTTP.Request(stream_url).content
+        new_playlist      = RegeneratePlaylist(original_playlist.splitlines(), stream_url[:stream_url.rindex("/")])
         return new_playlist
 
-def GetStream(product):
-    site = Prefs['site'].lower()
-    stream_url = "http://play.viaplay." + site + "/api/playlist/v1?deviceKey="+ GetDeviceKey(site) + "&productId=%s" % product
-    # Some viaplay xml is broken, so parse it with a more lenient HTML parser instead
-    data = HTTP.Request(stream_url).content
-    parser = HTMLParser()
-    tree = parse(StringIO.StringIO(data), parser)
-    url = tree.xpath("/html/body/playlist/entries/entry/url")[0].text
-    return url
+def GetStream(url):
+
+    item = MyJson(url)
+    item = item['_embedded']['viaplay:blocks']
+    item = item[0]['_embedded']['viaplay:product']
+
+    stream = item['_links']['viaplay:stream']['href']
+    stream = re.sub("(.+)({\\?deviceId.+userAgent})(.+)", "\\1?deviceId=deviceId&deviceName=deviceName&deviceType=deviceType&userAgent=userAgent\\3", stream)
+    stream_item = MyJson(stream)
+    if 'message' in stream_item and stream_item['message'] == "PG challenge" and Prefs['pin'] != "":
+        stream_item = MyJson(stream + "&pgPin=" + Prefs['pin'])
+    return stream_item['_links']['viaplay:playlist']['href']
+
 
 ######################################
 # Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
@@ -173,34 +168,4 @@ def MyJson(url):
     return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
 
 def GetDeviceKey(site):
-    # return "web-" + site
     return "androidnodrm-" + site
-
-def OldGetStream(url):
-
-    base_url = re.sub("(.*viaplay\\.[^/]+).*", "\\1", url)
-
-    email    = String.Quote(Prefs['username'])
-    password = String.Quote(Prefs['password'])
-    authUrl  = "https://lhr2.ops.entriq.net/services/payment/paymentws.svc/Ajax/Loginbyget?request=%7B%22Email%22%3A%22" + email + "%22%2C%22Password%22%3A%22" + password + "%22%2C%22AccountId%22%3A%22viasat%22%2C%22Cookies%22%3A%22%22%7D"
-    authPage  = JSON.ObjectFromURL(authUrl)
-    if authPage['d']['IsSuccessful'] == False:
-        raise Exception("Login Failed")
-
-    myCookie  = "VCDataType=json;OPS=" + authPage['d']['Cookies']
-    tokenUrl  = base_url + '/ahah/getCookieHashAjax'
-    tokenData = HTTP.Request(tokenUrl, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
-    myCookie  = myCookie + "; token=" + tokenData
-
-    page = HTML.ElementFromURL(url)
-
-    id = page.xpath("//div[@id='productSelect']")[0].get('data-product-id')
-    url = base_url + '/ahah/videoData?id=' + id
-    data = JSON.ObjectFromURL(url, headers = {'User-Agent': IPAD_UA, 'X-Requested-With': 'XMLHttpRequest','Cookie':myCookie})
-
-    # [] is returned if the data isn't available
-    if (isinstance(data, list)):
-        Log('Unable to be source data')
-        return None
-    
-    return data['source']
