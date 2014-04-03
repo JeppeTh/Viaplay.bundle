@@ -1,4 +1,4 @@
-import re, shutil
+import re, shutil, urllib
 from lxml.etree import HTMLParser, parse, tostring
 import StringIO
 
@@ -165,6 +165,8 @@ def Login():
             raise Exception("Age Verification Failed")
 
 def MyJson(url):
+    # Seems some setups (chromecast?) causes url to be urlencoded...
+    url = urllib.unquote(url)
     return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
 
 def GetDeviceKey(site):

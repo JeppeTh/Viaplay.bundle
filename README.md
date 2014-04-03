@@ -3,6 +3,8 @@ Viaplay Plex Plugin
 
 Provides access to the content available from Viaplay.
 
+!! Note that username and password will be shown in logs !!
+
 # Installation
 
 With Git (Recommended):
@@ -19,26 +21,11 @@ Download the ZIP and extract it:
 
 Now Plex should see the Viaplay plugin.
 
-# Compatibility
-
-Tested to work on the following clients:
-
-- Mac
-- Windows
-- Roku 
-- iOS
-
-Does *NOT* work on the following clients:
-
-- LG MediaLink
-
-# Credits
-
-This project makes use of the following external dependencies:
-
-- Metro UI Dock Icon Set <a href="http://dakirby309.deviantart.com/gallery/#/d4n4w3q">http://dakirby309.deviantart.com/gallery/#/d4n4w3q</a>
-
 # Changes
+03/04/2014:
++ Fix for chromecast
++ Removed some unused resources
+
 22/02/2014:
 + Remove hardcoded url for fetching stream (may require PIN to be added in config)
 + Fixed search for Samsung Plex
@@ -67,3 +54,9 @@ This project makes use of the following external dependencies:
 
 15/09/2012:
 + First usable version
+
+# Credits
+
+This project makes use of the following external dependencies:
+
+- Metro UI Dock Icon Set <a href="http://dakirby309.deviantart.com/gallery/#/d4n4w3q">http://dakirby309.deviantart.com/gallery/#/d4n4w3q</a>
