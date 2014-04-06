@@ -14,7 +14,7 @@ def MetadataObjectForURL(url):
     Login()
 
     # Request the URL
-    item = MyJson(url)
+    item = MyJson(urllib.unquote(url))
     item = item['_embedded']['viaplay:blocks']
     item = item[0]['_embedded']['viaplay:product']
     item_type = item['type']
@@ -61,9 +61,10 @@ def MetadataObjectForURL(url):
 
 ####################################################################################################
 def MediaObjectsForURL(url):
+    # Seems some setups (chromecast?) causes url to be urlencoded...
     return [
       MediaObject(
-                  parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url = url, platform = Client.Platform)))],
+                  parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url = urllib.unquote(url), platform = Client.Platform)))],
                   audio_channels = 2
       )
     ]
@@ -115,7 +116,9 @@ def RegeneratePlaylist(playlist, url):
     for line in playlist:
         bandwidth = BANDWIDTH_PATTERN.search(line)
         if not bandwidth:
-            if not reading:
+            if '#' in line:
+                new_playlist = new_playlist + line + '\n'
+            elif not reading:
                 continue
             else:
                 if not line.startswith('http'):
@@ -165,8 +168,6 @@ def Login():
             raise Exception("Age Verification Failed")
 
 def MyJson(url):
-    # Seems some setups (chromecast?) causes url to be urlencoded...
-    url = urllib.unquote(url)
     return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
 
 def GetDeviceKey(site):
