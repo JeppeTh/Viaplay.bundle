@@ -65,7 +65,8 @@ def MediaObjectsForURL(url):
     return [
       MediaObject(
                   parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url = urllib.unquote(url), platform = Client.Platform)))],
-                  audio_channels = 2
+                  audio_channels = 2,
+                  optimized_for_streaming = True
       )
     ]
 
@@ -112,7 +113,6 @@ def RegeneratePlaylist(playlist, url):
     
     reading = False
     
-    new_playlist = '#EXTM3U\n'
     for line in playlist:
         bandwidth = BANDWIDTH_PATTERN.search(line)
         if not bandwidth:
