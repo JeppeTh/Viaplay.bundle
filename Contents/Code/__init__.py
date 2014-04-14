@@ -292,12 +292,13 @@ def Season(title2, url, alt=[]):
 def Search (query):
     Log("JTDEBUG Search (%s)" % query)
     oc = ObjectContainer(title2='Search')
+    unquotedQuery = query
     query = String.Quote(query)
     search = MyJson(baseUrl() + '/search?query=' + query)
     hits = []
 
     for hit in search['_embedded']['viaplay:blocks']:
-        if 'error' in hit:
+        if 'error' in hit or len(hit['_embedded']['viaplay:products']) == 0:
             continue;
         search_type = hit['_embedded']['viaplay:products'][0]['type']
         if search_type == 'episode' or search_type == 'movie' or search_type == 'sport':
@@ -310,7 +311,7 @@ def Search (query):
     if len(hits) == 0:
         return MessageContainer(
             "Search results",
-            "Did not find any result for '%s'" % query
+            "Did not find any result for '%s'" % unquotedQuery
             )
     elif len(hits) == 1:
         return BrowseHits(hits[0])
@@ -406,7 +407,6 @@ def ReLogin():
     return MainMenu()
 
 def GetDeviceKey(site):
-    # return "web-" + site
     return "androidnodrm-" + site
     
 def MyJson(url):

@@ -21,7 +21,13 @@ Download the ZIP and extract it:
 
 Now Plex should see the Viaplay plugin.
 
+# Forum:
+https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
+
 # Changes
+14/04/2014
++ Fix for Search
+
 03/04/2014:
 + Fix for chromecast
 + Removed some unused resources
