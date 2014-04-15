@@ -110,6 +110,7 @@ def RegeneratePlaylist(playlist, url):
     max_bandwidth = 0
     max_bandwidth_meta = ""
     max_bandwidth_url = ""
+    new_playlist = ""
     
     reading = False
     
