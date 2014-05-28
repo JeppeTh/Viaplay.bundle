@@ -11,10 +11,14 @@ BANDWIDTH_PATTERN = Regex('#EXT.*BANDWIDTH=([0-9]+)')
 ####################################################################################################
 def MetadataObjectForURL(url):
 
-    Login()
-
     # Request the URL
-    item = MyJson(urllib.unquote(url))
+    try:
+        item = MyJson(urllib.unquote(url))
+    except:
+        ## Perhaps login is required...
+        Login()
+        item = MyJson(urllib.unquote(url))
+
     item = item['_embedded']['viaplay:blocks']
     item = item[0]['_embedded']['viaplay:product']
     item_type = item['type']
@@ -172,4 +176,4 @@ def MyJson(url):
     return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
 
 def GetDeviceKey(site):
-    return "androidnodrm-" + site
+    return "androidnodrmv2-" + site

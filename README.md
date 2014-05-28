@@ -25,6 +25,12 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+28/05/2014
++ Fix for login issues after viaplay changes.
+
+15/04/2014
++ Fix for bug introduced when modifying playlist
+
 14/04/2014
 + Fix for Search
 

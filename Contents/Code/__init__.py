@@ -407,7 +407,7 @@ def ReLogin():
     return MainMenu()
 
 def GetDeviceKey(site):
-    return "androidnodrm-" + site
+    return "androidnodrmv2-" + site
     
 def MyJson(url):
     return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
