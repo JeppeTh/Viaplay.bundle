@@ -96,7 +96,7 @@ def Section(title2, url):
 
     if len(sections['_embedded']['viaplay:blocks']) > 0:
         for block in sections['_embedded']['viaplay:blocks']:
-            if block["type"] != 'list' or not '_links' in block:
+            if (block["type"] != 'list' and block["type"] != 'dynamicList') or not '_links' in block:
                 continue
             title = unicode(block['title'])
             if 'viaplay:seeAll' in block['_links']:
@@ -195,32 +195,11 @@ def ContinueCategory(oc, next_url):
 def LoopCategory(oc, items=[], next_url=None):
     Log("JTDEBUG LoopCategory(%s %d %s)" % (oc, len(items), next_url))
     for item in items:
-        content = item['content']
-        art = R(ART)
-        thumb = R(ICON)
-        if item['type'] == 'series':
-            title   = content['series']['title']
-            url     = item['_links']['viaplay:page']['href']
-            if 'landscape' in content['images']:
-                art   = content['images']['landscape']['url']
-                thumb = art
-            if 'boxart' in content['images']:
-                thumb = content['images']['boxart']['url']
-            oc.add(CreateDirObject(title,
-                                   Callback(Serie, title2=title, url=url),
-                                   thumb,
-                                   art,
-                                   content['synopsis']
-                                   )
-                   )
-            continue
-        # Movie
-        # try:
-        #     if not "drm" in item['system']['flags']:
-        #         oc.add(MakeMovieObject(item))
-        # except:
-        #     oc.add(MakeMovieObject(item))
-        oc.add(MakeMovieObject(item))
+        if item['type'] == 'series' and IsNotDrm(item):
+            oc.add(MakeSeriesObject(item))
+        elif IsNotDrm(item):
+            oc.add(MakeMovieObject(item))
+
     if len(oc) < 30 and next_url != None:
         return ContinueCategory(oc, next_url)
     elif next_url != None:
@@ -284,9 +263,10 @@ def Season(title2, url, alt=[]):
             return oc
 
     for episode in episodes:
-        content  = episode['content']
-        title    = content['series']['episodeTitle']
-        oc.add(MakeEpisodeObject(title, episode))
+        if IsNotDrm(episode):
+            content  = episode['content']
+            title    = content['series']['episodeTitle']
+            oc.add(MakeEpisodeObject(title, episode))
     return oc
 
 def Search (query):
@@ -301,12 +281,13 @@ def Search (query):
         if 'error' in hit or len(hit['_embedded']['viaplay:products']) == 0:
             continue;
         search_type = hit['_embedded']['viaplay:products'][0]['type']
-        if search_type == 'episode' or search_type == 'movie' or search_type == 'sport':
+        if search_type == 'series' or search_type == 'episode' or search_type == 'movie' or search_type == 'sport':
             if 'next' in hit['_links']:
                 next_url = hit['_links']['next']['href']
             else:
                 next_url = None
-            hits.append((hit['title'],search_type, hit['_embedded']['viaplay:products'], next_url))
+            if AnyNonDrm(hit['_embedded']['viaplay:products'], next_url):
+                hits.append((hit['title'],search_type, hit['_embedded']['viaplay:products'], next_url))
 
     if len(hits) == 0:
         return MessageContainer(
@@ -332,25 +313,51 @@ def ContinueSearch (title2, search_type, next_url):
         next_url = None
     return BrowseHits((title2, search_type, sections['_embedded']['viaplay:products'], next_url))
 
+def IsNotDrm(item=[]):
+    try:
+        return not ("drm" in item['system']['flags'])
+    except:
+        return True
+
+def AnyNonDrm(items, next_url):
+    for item in items:
+        if IsNotDrm(item):
+            return True
+    if next_url:
+        sections = MyJson(next_url)
+        if 'next' in sections['_links']:
+            next_url = sections['_links']['next']['href']
+        else:
+            next_url = None
+        return AnyNonDrm(sections['_embedded']['viaplay:products'], next_url)
+    return False
+
 def BrowseHits(hit):
     (title2, search_type, objects, next_url) = hit
     Log("JTDEBUG BrowseHits(%s %s %d %s)" % (title2, search_type, len(objects), next_url))
     oc = ObjectContainer(title2=title2+" Search hits")
-    if search_type == 'episode':
+    if search_type == 'series':
+        for serie in objects:
+            if IsNotDrm(serie):
+                oc.add(MakeSeriesObject(serie))
+        
+    elif search_type == 'episode':
         for episode in objects:
-            content = episode['content']
-            title   = unicode(content['title'])
-            if 'season' in content['series']:
-                title = title + " - " + SEASON_TRANSLATED + \
-                    " %i" % content['series']['season']['seasonNumber']
-            if 'episodeNumber' in content['series']:
-                title = title + " - " + EPISODE_TRANSLATED + \
-                    " %i" % content['series']['episodeNumber']
-            oc.add(MakeEpisodeObject(title, episode))
+            if IsNotDrm(episode):
+                content = episode['content']
+                title   = unicode(content['title'])
+                if 'season' in content['series']:
+                    title = title + " - " + SEASON_TRANSLATED + \
+                        " %i" % content['series']['season']['seasonNumber']
+                if 'episodeNumber' in content['series']:
+                    title = title + " - " + EPISODE_TRANSLATED + \
+                        " %i" % content['series']['episodeNumber']
+                oc.add(MakeEpisodeObject(title, episode))
 
     elif search_type == 'movie' or search_type == 'sport':
         for movie in objects:
-            oc.add(MakeMovieObject(movie))
+            if IsNotDrm(movie):
+                oc.add(MakeMovieObject(movie))
 
     if next_url != None:
         oc.add(CreateDirObject("More...",
@@ -455,6 +462,30 @@ def AddEpgInfo(title, item=[]):
 
         return '%s (%s)' % (title, time)
     return title
+
+def MakeSeriesObject(item=[]):
+    content = item['content']
+    art = R(ART)
+    thumb = R(ICON)
+    synopsis = None
+    title   = content['series']['title']
+    url     = item['_links']['viaplay:page']['href']
+    if 'landscape' in content['images']:
+        art   = content['images']['landscape']['url']
+        thumb = art
+    if 'boxart' in content['images']:
+        thumb = content['images']['boxart']['url']
+    if 'synopsis' in content:
+        synopsis = content['synopsis']
+    elif 'synopsis' in content['series']:
+        synopsis = content['series']['synopsis']
+    
+    return CreateDirObject(title,
+                           Callback(Serie, title2=title, url=url),
+                           thumb,
+                           art,
+                           synopsis
+                           )
 
 def MakeEpisodeObject(title, episode=[]):
     art = R(ART)
