@@ -45,7 +45,8 @@ def Start():
 
     site = Prefs['site'].lower()
     suffix = "-" + site
-    translations = MyJson("https://cms-api.viaplay."+site+"/translations/web")
+    contents = MyJson("https://content.viaplay."+site)
+    translations = MyJson(contents['_links']['viaplay:translate-content']['href'])
     for country in translations:
         if suffix in country:
             SEASON_TRANSLATED  = unicode(translations[country]['Season']['text'])
@@ -64,28 +65,20 @@ def MainMenu():
         for section in sections['_links']['viaplay:sections']:
             if section['type'] == 'vod':
                 title = unicode(section['title'])
-                oc.add(CreateDirObject(title,
-                                       Callback(Section, title2=title, url=section['href']),
-                                       )
-                       )
-        oc.add(CreateDirObject("Re-Login",
-                               Callback(ReLogin),
-                               )
-               )
-        oc.add(InputDirectoryObject(key = Callback(Search), 
-                                    title=SEARCH_TRANSLATED, 
-                                    prompt=SEARCH_TRANSLATED,
-                                    thumb = R('icon-search.png')
+                oc.add(CreateDirObject(title, Callback(Section, title2=title, url=section['href'])))
+        oc.add(CreateDirObject("Re-Login", Callback(ReLogin)))
+        oc.add(PrefsObject(title = L('Preferences Menu Title'), thumb=R(ICON_PREFS)))
+        oc.add(InputDirectoryObject(key    = Callback(Search), 
+                                    title  = SEARCH_TRANSLATED, 
+                                    prompt = SEARCH_TRANSLATED,
+                                    thumb  = R('icon-search.png')
                                     )
                )
     except:
         oc.message = "Login failed"
-        oc.add(CreateDirObject("Login",
-                               Callback(MainMenu),
-                               )
-               )
+        oc.add(CreateDirObject("Login", Callback(MainMenu)))
+        oc.add(PrefsObject(title = L('Preferences Menu Title'), thumb = R(ICON_PREFS)))
 
-    oc.add(PrefsObject(title = L('Preferences Menu Title'), thumb = R(ICON_PREFS)))
     return oc
 
 @route('/video/viaplay/section', 'GET')
@@ -200,9 +193,9 @@ def LoopCategory(oc, items=[], next_url=None):
         elif IsNotDrm(item):
             oc.add(MakeMovieObject(item))
 
-    if len(oc) < 30 and next_url != None:
+    if len(oc) < 50 and next_url != None:
         return ContinueCategory(oc, next_url)
-    elif next_url != None:
+    elif AnyNonDrm([], next_url):
         oc.add(CreateDirObject("More...",
                                Callback(Category, title2=oc.title2, url=next_url, sort=False),
                                ))
@@ -211,7 +204,7 @@ def LoopCategory(oc, items=[], next_url=None):
 @route('/video/viaplay/serie', 'GET')
 def Serie(title2, url):
     Log("JTDEBUG Serie(%s %s)" % (title2, url))
-    oc = ObjectContainer(title2=title2)
+    oc = ObjectContainer(title2=unicode(title2))
 
     try:
         serie = MyJson(url)
@@ -239,8 +232,7 @@ def Serie(title2, url):
                                )
                )
     if len(oc) > 1:
-        oc.objects.sort(key=lambda obj: obj.title)
-        oc.objects.reverse()
+        oc.objects.sort(key = lambda obj: int(re.sub("[^0-9]+","",obj.title)), reverse = True)
         return oc
     else:
         return Season(title2=title, url=url, alt=alt)
@@ -359,7 +351,7 @@ def BrowseHits(hit):
             if IsNotDrm(movie):
                 oc.add(MakeMovieObject(movie))
 
-    if next_url != None:
+    if AnyNonDrm([], next_url):
         oc.add(CreateDirObject("More...",
                                Callback(ContinueSearch, title2=title2, search_type=search_type, next_url=next_url),
                                ))
@@ -428,10 +420,10 @@ def MakeMovieObject(item=[]):
     except:
         duration = None
 
-    if 'landscape' in content['images']:
+    if 'images' in content and 'landscape' in content['images']:
         art   = content['images']['landscape']['url']
         thumb = art
-    if 'boxart' in content['images']:
+    if 'images' in content and 'boxart' in content['images']:
         thumb = content['images']['boxart']['url']
 
     return MovieObject(title    = AddEpgInfo(content['title'], item),
@@ -470,10 +462,10 @@ def MakeSeriesObject(item=[]):
     synopsis = None
     title   = content['series']['title']
     url     = item['_links']['viaplay:page']['href']
-    if 'landscape' in content['images']:
+    if 'images' in content and 'landscape' in content['images']:
         art   = content['images']['landscape']['url']
         thumb = art
-    if 'boxart' in content['images']:
+    if 'images' in content and 'boxart' in content['images']:
         thumb = content['images']['boxart']['url']
     if 'synopsis' in content:
         synopsis = content['synopsis']
@@ -491,10 +483,10 @@ def MakeEpisodeObject(title, episode=[]):
     art = R(ART)
     thumb = R(ICON)
     content = episode['content']
-    if 'landscape' in content['images']:
+    if 'images' in content and 'landscape' in content['images']:
         art   = content['images']['landscape']['url']
         thumb = art
-    if 'boxart' in content['images']:
+    if 'images' in content and 'boxart' in content['images']:
         thumb = content['images']['boxart']['url']
     air_date = Datetime.ParseDate(episode['system']['availability']['start']).date()
     if 'episodeNumber' in content['series']:

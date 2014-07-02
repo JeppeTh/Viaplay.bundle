@@ -25,10 +25,14 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+02/07/2014
++ Translation web seems to have moved
++ Correct sorting of seasons
+
 28/05/2014
 + Fix for login issues after viaplay changes.
-* Search for series no longer seem to search episodes - handled
-* Seems new version shows DRM content when browsing - filter out DRM content
++ Search for series no longer seem to search episodes - handled
++ Seems new version shows DRM content when browsing - filter out DRM content
 
 15/04/2014
 + Fix for bug introduced when modifying playlist
