@@ -441,18 +441,20 @@ def AddEpgInfo(title, item=[]):
         now = datetime.datetime.now()
 
         if start_time < now and now < end_time:
-            if '(' in title:
-                # Rerun can't be live
-                return title
-            else:
-                time = 'Live'
+            epg = "Now"
+        elif now > end_time:
+            epg = "Ended %s" % end_time.strftime('%H:%M')
         else:
             if start_time.strftime('%Y%m%d') == now.strftime('%Y%m%d'):
-                time = start_time.strftime('Today at %H:%M')
+                # Today
+                epg = start_time.strftime('%H:%M')
+            elif start_time.date().isocalendar()[1] == now.date().isocalendar()[1]:
+                # This week
+                epg = start_time.strftime('%A %H:%M')
             else:
-                time = start_time.strftime('%A %b %d at %H:%M')
+                epg = start_time.strftime('%b %d %H:%M')
 
-        return '%s (%s)' % (title, time)
+        return '%s: %s' % (epg, title)
     return title
 
 def MakeSeriesObject(item=[]):

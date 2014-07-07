@@ -25,6 +25,9 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+07/07/2014
++ Changed EPG info
+
 02/07/2014
 + Translation web seems to have moved
 + Correct sorting of seasons
