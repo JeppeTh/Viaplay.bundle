@@ -212,10 +212,8 @@ def LoopCategory(oc, items, next_url, org_url, offset):
         any_non_drm = AnyNonDrm(items[(new_offset-offset):], next_url)
         if any_non_drm == 'items':
             next_url = org_url
-            pass
         elif any_non_drm == 'next_url':
             new_offset = 0
-            pass
         else:
             return oc
 
