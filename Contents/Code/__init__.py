@@ -7,6 +7,11 @@
 ####################################################################################################
 import re
 import datetime
+
+MyJson       = SharedCodeService.viaplaylib.MyJson
+Login        = SharedCodeService.viaplaylib.Login
+GetDeviceKey = SharedCodeService.viaplaylib.GetDeviceKey
+
 VIDEO_PREFIX = "/video/viaplay"
 
 ART = 'art-default.jpg'
@@ -18,6 +23,8 @@ IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 5_1 like Mac OS X; en-us) AppleWebKit/534.4
 SEASON_TRANSLATED  = ""
 EPISODE_TRANSLATED = ""
 SEARCH_TRANSLATED  = "Search"
+
+MAX_LEN = 50
 
 ####################################################################################################
 
@@ -118,19 +125,19 @@ def Section(title2, url):
                    )
     return oc
 
-@route('/video/viaplay/category', 'GET')
-def Category(title2, url, sort = True):
-    Log("JTDEBUG Category(%s %s %s)" % (title2, url, sort))
+@route('/video/viaplay/category', sort=bool, offset=int)
+def Category(title2, url, sort = True, offset=0):
+    Log("JTDEBUG Category(%s %s %s %i)" % (title2, url, sort, offset))
     oc = ObjectContainer(title2=unicode(title2))
     if sort == True:
         next_url = url+"?sort=alphabetical"
     else:
         next_url = url
-    return ContinueCategory(oc, next_url)
+    return ContinueCategory(oc, next_url, offset)
 
-def ContinueCategory(oc, next_url):
-    Log("JTDEBUG ContinueCategory(%s %s)" % (oc, next_url))
-    
+def ContinueCategory(oc, next_url, offset=0):
+    Log("JTDEBUG ContinueCategory(%s %s %i)" % (oc, next_url, offset))
+    org_url = next_url
     try:
         base_url = re.sub("(.+)\\?.*", "\\1", next_url)
         sections = MyJson(next_url)
@@ -159,7 +166,7 @@ def ContinueCategory(oc, next_url):
                 next_url = None
 
             if 'viaplay:products' in items['_embedded']:
-                oc = LoopCategory(oc, items['_embedded']['viaplay:products'], next_url)
+                oc = LoopCategory(oc, items['_embedded']['viaplay:products'], next_url, org_url, offset)
             # else:
             #     title = items['title']
             #     url   = items['_links']['self']['href']
@@ -173,7 +180,7 @@ def ContinueCategory(oc, next_url):
             next_url = sections['_links']['next']['href']
         else:
             next_url = None
-        oc = LoopCategory(oc, sections['_embedded']['viaplay:products'], next_url)
+        oc = LoopCategory(oc, sections['_embedded']['viaplay:products'], next_url, org_url, offset)
     # elif len(oc) > 0:
     #     return oc
     elif '_embedded' in sections and 'viaplay:errors' in sections['_embedded']:
@@ -185,20 +192,39 @@ def ContinueCategory(oc, next_url):
 
     return oc
 
-def LoopCategory(oc, items=[], next_url=None):
-    Log("JTDEBUG LoopCategory(%s %d %s)" % (oc, len(items), next_url))
+def LoopCategory(oc, items, next_url, org_url, offset):
+    Log("JTDEBUG LoopCategory(%s %d %s %s %i)" % (oc, len(items), next_url, org_url, offset))
+    new_offset = offset
+    if offset > 0:
+        items = items[offset:]
     for item in items:
+        new_offset = new_offset+1
         if item['type'] == 'series' and IsNotDrm(item):
             oc.add(MakeSeriesObject(item))
         elif IsNotDrm(item):
             oc.add(MakeMovieObject(item))
+        if len(oc) == MAX_LEN:
+            break
 
-    if len(oc) < 50 and next_url != None:
+    if len(oc) < MAX_LEN and next_url != None:
         return ContinueCategory(oc, next_url)
-    elif AnyNonDrm([], next_url):
-        oc.add(CreateDirObject("More...",
-                               Callback(Category, title2=oc.title2, url=next_url, sort=False),
-                               ))
+    else:
+        any_non_drm = AnyNonDrm(items[(new_offset-offset):], next_url)
+        if any_non_drm == 'items':
+            next_url = org_url
+            pass
+        elif any_non_drm == 'next_url':
+            new_offset = 0
+            pass
+        else:
+            return oc
+
+        oc.add(NextPageObject(
+                key     = Callback(Category, title2=oc.title2, url=next_url, sort=False, offset=new_offset),
+                title   = "More...",
+                art     = R(ART)
+                )
+               )
     return oc
 
 @route('/video/viaplay/serie', 'GET')
@@ -227,9 +253,16 @@ def Serie(title2, url):
             alt = season['_embedded']['viaplay:products']
         except:
             alt = []
-        oc.add(CreateDirObject(title,
-                               Callback(Season, title2=title, url=url, alt=alt)
-                               )
+        oc.add(SeasonObject(
+                key           = Callback(Season, title2=title, url=url, alt=alt),
+                rating_key    = url,
+                index         = int(season['title']),
+                title         = title,
+                show          = title2,
+                episode_count = int(season['totalProductCount']),
+                thumb         = R(ICON),
+                art           = R(ART)
+                )
                )
     if len(oc) > 1:
         oc.objects.sort(key = lambda obj: int(re.sub("[^0-9]+","",obj.title)), reverse = True)
@@ -297,13 +330,13 @@ def Search (query):
         return oc
 
 @route('/video/viaplay/continuesearch', 'GET')
-def ContinueSearch (title2, search_type, next_url):
+def ContinueSearch (title2, search_type, next_url, oc=None):
     sections = MyJson(next_url)
     if 'next' in sections['_links']:
         next_url = sections['_links']['next']['href']
     else:
         next_url = None
-    return BrowseHits((title2, search_type, sections['_embedded']['viaplay:products'], next_url))
+    return BrowseHits((title2, search_type, sections['_embedded']['viaplay:products'], next_url), oc)
 
 def IsNotDrm(item=[]):
     try:
@@ -314,29 +347,32 @@ def IsNotDrm(item=[]):
 def AnyNonDrm(items, next_url):
     for item in items:
         if IsNotDrm(item):
-            return True
+            return 'items'
     if next_url:
         sections = MyJson(next_url)
         if 'next' in sections['_links']:
             next_url = sections['_links']['next']['href']
         else:
             next_url = None
-        return AnyNonDrm(sections['_embedded']['viaplay:products'], next_url)
+        if AnyNonDrm(sections['_embedded']['viaplay:products'], next_url):
+            return 'next_url'
     return False
 
-def BrowseHits(hit):
+@route('/video/viaplay/browsegits', hit=tuple)
+def BrowseHits(hit=(), oc=None):
     (title2, search_type, objects, next_url) = hit
-    Log("JTDEBUG BrowseHits(%s %s %d %s)" % (title2, search_type, len(objects), next_url))
-    oc = ObjectContainer(title2=title2+" Search hits")
-    if search_type == 'series':
-        for serie in objects:
-            if IsNotDrm(serie):
-                oc.add(MakeSeriesObject(serie))
-        
-    elif search_type == 'episode':
-        for episode in objects:
-            if IsNotDrm(episode):
-                content = episode['content']
+    Log("JTDEBUG BrowseHits(%s %s %d %s %r)" % (title2, search_type, len(objects), next_url, type(oc)))
+    if not oc:
+        oc = ObjectContainer(title2=title2+" Search hits")
+
+    index = 0
+    for obj in objects:
+        index = index+1
+        if IsNotDrm(obj):
+            if search_type == 'series':
+                oc.add(MakeSeriesObject(obj))
+            elif search_type == 'episode':
+                content = obj['content']
                 title   = unicode(content['title'])
                 if 'season' in content['series']:
                     title = title + " - " + SEASON_TRANSLATED + \
@@ -344,17 +380,30 @@ def BrowseHits(hit):
                 if 'episodeNumber' in content['series']:
                     title = title + " - " + EPISODE_TRANSLATED + \
                         " %i" % content['series']['episodeNumber']
-                oc.add(MakeEpisodeObject(title, episode))
+                oc.add(MakeEpisodeObject(title, obj))
+            elif search_type == 'movie' or search_type == 'sport':
+                oc.add(MakeMovieObject(obj))
+            if len(oc) == MAX_LEN:
+                break
 
-    elif search_type == 'movie' or search_type == 'sport':
-        for movie in objects:
-            if IsNotDrm(movie):
-                oc.add(MakeMovieObject(movie))
+    if len(oc) < MAX_LEN and next_url != None:
+        return ContinueSearch(title2, search_type, next_url, oc)
+    else:
+        rest_objects = objects[index:]
+        any_non_drm = AnyNonDrm(rest_objects, next_url)
+        if any_non_drm == 'items':
+            key = Callback(BrowseHits, hit=(title2, search_type, rest_objects, next_url))
+        elif any_non_drm == 'next_url':
+            key = Callback(ContinueSearch, title2=title2, search_type=search_type, next_url=next_url)
+        else:
+            return oc
 
-    if AnyNonDrm([], next_url):
-        oc.add(CreateDirObject("More...",
-                               Callback(ContinueSearch, title2=title2, search_type=search_type, next_url=next_url),
-                               ))
+        oc.add(NextPageObject(
+                key   = key,
+                title = "More...",
+                art   = R(ART)
+                )
+               )
     return oc
 
 def CreateDirObject(name, key, thumb=R(ICON), art=R(ART), summary=None):
@@ -376,40 +425,11 @@ def baseUrl():
     site = Prefs['site'].lower()
     return 'http://content.viaplay.' + site + '/' + GetDeviceKey(site)
 
-def Login():
-    site = Prefs['site'].lower()
-    device_key = GetDeviceKey(site)
-    api = "https://login.viaplay." + site + "/api"
-    url = api + "/persistentLogin/v1?deviceKey=" + device_key + "&returnurl=http%3A%2F%2Fcontent.viaplay." + site + "%2F" + device_key
-    try:
-        loginPage = MyJson(url)
-        loginResult = loginPage['success']
-    except:
-        loginResult = False
-    if loginResult == False:
-        email    = String.Quote(Prefs['username'])
-        password = String.Quote(Prefs['password'])
-        authUrl = api + "/login/v1?deviceKey=" + device_key + "&returnurl=http%3A%2F%2Fcontent.viaplay."+ site + "%2F" + device_key + "&username=" + email + "&password="+ password + "&persistent=true"
-        loginPage  = MyJson(authUrl)
-        if loginPage['success'] == False:
-            raise Exception("Login Failed")
-
-    if Prefs['ageVerification'] == True:
-        agePage = MyJson(api + "/ageVerification/v1?deviceKey=" + device_key + "&returnurl=https%3A%2F%2Fcontent.viaplay." + site + "%2F" + device_key)
-        if agePage['success'] == False:
-            raise Exception("Age Failed")
-
 def ReLogin():
     site = Prefs['site'].lower()
     url = "https://login.viaplay."+site+"/api/logout/v1?deviceKey=" + GetDeviceKey(site)
     MyJson(url)
     return MainMenu()
-
-def GetDeviceKey(site):
-    return "androidnodrmv2-" + site
-    
-def MyJson(url):
-    return JSON.ObjectFromURL(re.sub("{\\?dtg}", "", url))
 
 def MakeMovieObject(item=[]):
     art = R(ART)
@@ -426,12 +446,37 @@ def MakeMovieObject(item=[]):
     if 'images' in content and 'boxart' in content['images']:
         thumb = content['images']['boxart']['url']
 
-    return MovieObject(title    = AddEpgInfo(content['title'], item),
-                       summary  = content['synopsis'],
-                       thumb    = thumb,
-                       art      = art,
-                       url      = item['_links']['viaplay:page']['href'],
-                       duration = duration
+    try:
+        year = content['production']['year']
+    except:
+        year = None
+
+    try:
+        countries = [content['production']['country']]
+    except:
+        countries = []
+
+    genres = []
+    if 'viaplay:genres' in item['_links']:
+        for genre in item['_links']['viaplay:genres']:
+            genre = genres.append(unicode(genre['title']))
+
+    directors = []
+    if 'people' in content and 'directors' in content['people']:
+        for director in content['people']['directors']:
+            directors.append(unicode(director))
+
+    return MovieObject(title          = AddEpgInfo(content['title'], item),
+                       summary        = content['synopsis'],
+                       thumb          = thumb,
+                       art            = art,
+                       url            = item['_links']['viaplay:page']['href'],
+                       duration       = duration,
+                       year           = year,
+                       countries      = countries,
+                       genres         = genres,
+                       directors      = directors,
+                       content_rating = content['parentalRating'] if 'parentalRating' in content else None
                        )
 
 def AddEpgInfo(title, item=[]):
@@ -448,8 +493,8 @@ def AddEpgInfo(title, item=[]):
             if start_time.strftime('%Y%m%d') == now.strftime('%Y%m%d'):
                 # Today
                 epg = start_time.strftime('%H:%M')
-            elif start_time.date().isocalendar()[1] == now.date().isocalendar()[1]:
-                # This week
+            elif (start_time.timetuple().tm_yday - now.timetuple().tm_yday) < 7:
+                # Within a week
                 epg = start_time.strftime('%A %H:%M')
             else:
                 epg = start_time.strftime('%b %d %H:%M')
@@ -473,13 +518,26 @@ def MakeSeriesObject(item=[]):
         synopsis = content['synopsis']
     elif 'synopsis' in content['series']:
         synopsis = content['series']['synopsis']
+
+    genres = []
+    if 'viaplay:genres' in item['_links']:
+        for genre in item['_links']['viaplay:genres']:
+            genre = genres.append(unicode(genre['title']))
+
+    if 'parentalRating' in content:
+        content_rating = content['parentalRating']
+    else:
+        content_rating = None
     
-    return CreateDirObject(title,
-                           Callback(Serie, title2=title, url=url),
-                           thumb,
-                           art,
-                           synopsis
-                           )
+    return TVShowObject(key            = Callback(Serie, title2=title, url=url),
+                        rating_key     = url,
+                        content_rating = content_rating,
+                        genres         = genres,
+                        title          = title,
+                        thumb          = thumb,
+                        art            = art,
+                        summary        = synopsis
+                        )
 
 def MakeEpisodeObject(title, episode=[]):
     art = R(ART)

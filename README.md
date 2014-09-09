@@ -25,6 +25,12 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+09/09/2014
++ Changed EPG info a bit again
++ Modifed navigation a bit (pagination)
++ Add some meta data
++ Moved common code to Shared Code service
+
 07/07/2014
 + Changed EPG info
 
