@@ -25,6 +25,10 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+14/10/2014
++ Corrected a navigation fault
++ Added verification by pin in addition to verification by age
+
 09/09/2014
 + Changed EPG info a bit again
 + Modifed navigation a bit (pagination)

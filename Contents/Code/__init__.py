@@ -186,7 +186,7 @@ def ContinueCategory(oc, next_url, offset=0):
     elif '_embedded' in sections and 'viaplay:errors' in sections['_embedded']:
         oc.header  = "Sorry"
         oc.message = sections['_embedded']['viaplay:errors'][0]['message']
-    else:
+    elif len(oc) == 0:
         oc.header  = "Sorry"
         oc.message = "No programs found."
 
@@ -302,7 +302,7 @@ def Search (query):
 
     for hit in search['_embedded']['viaplay:blocks']:
         if 'error' in hit or len(hit['_embedded']['viaplay:products']) == 0:
-            continue;
+            continue
         search_type = hit['_embedded']['viaplay:products'][0]['type']
         if search_type == 'series' or search_type == 'episode' or search_type == 'movie' or search_type == 'sport':
             if 'next' in hit['_links']:
