@@ -22,7 +22,7 @@ def Login():
         agePage = MyJson(api + "/ageVerification/v1?deviceKey=" + device_key + "&returnurl=https%3A%2F%2Fcontent.viaplay." + site + "%2F" + device_key)
         if agePage['success'] == False:
             raise Exception("Age Failed")
-        if Prefs['pin'] != "":
+        if Prefs['pin'] and Prefs['pin'] != "":
             agePinPage = MyJson(api + "/ageVerification/byPin/v1?deviceKey=" + device_key + "&returnurl=https%3A%2F%2Fcontent.viaplay." + site + "%2F" + device_key + "&pgPin=" + Prefs['pin'])
             if agePinPage['success'] == False:
                 raise Exception("Age by Pin Failed")

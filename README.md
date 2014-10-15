@@ -25,6 +25,9 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+15/10/2014
++ Verification by pin didn't work in case of no pin
+
 14/10/2014
 + Corrected a navigation fault
 + Added verification by pin in addition to verification by age
