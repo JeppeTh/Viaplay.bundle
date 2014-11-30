@@ -114,6 +114,9 @@ def GetStream(url):
 # so we are manually creating the playlist with the max bandwidth
 ######################################
 def RegeneratePlaylist(playlist, url):
+
+    Log("JTDEBUG : playlist:%s" % playlist)
+
     max_bandwidth = 0
     max_bandwidth_meta = ""
     max_bandwidth_url = ""
@@ -145,6 +148,8 @@ def RegeneratePlaylist(playlist, url):
 
     new_playlist = new_playlist + max_bandwidth_meta + '\n'
     new_playlist = new_playlist + max_bandwidth_url + '\n'
+
+    Log("JTDEBUG : new_playlist:%s" % new_playlist)
 
     return new_playlist
 
