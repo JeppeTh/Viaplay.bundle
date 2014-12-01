@@ -88,13 +88,11 @@ def PlayVideo(url, platform):
     except Exception as e:
         raise Ex.MediaNotAvailable
     
-    if platform == ClientPlatform.iOS:
-        Log("JTDEBUG : iOS, perhaps %s won't work for live stream?" % stream_url)
+    if platform == ClientPlatform.iOS and stream_url.endswith(".m3u8"):
+        # iOS and no url params
         return Redirect(stream_url)
     else:
-        original_playlist = HTTP.Request(stream_url).content
-        new_playlist      = RegeneratePlaylist(original_playlist.splitlines(), stream_url)
-        return new_playlist
+        return RegeneratePlaylist(stream_url)
 
 def GetStream(url):
 
@@ -114,8 +112,9 @@ def GetStream(url):
 # Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
 # so we are manually creating the playlist with the max bandwidth
 ######################################
-def RegeneratePlaylist(playlist, url):
+def RegeneratePlaylist(stream_url):
 
+    playlist = HTTP.Request(stream_url).content.splitlines()
     # Log("JTDEBUG : playlist:%s" % playlist)
 
     max_bandwidth = 0
@@ -125,8 +124,8 @@ def RegeneratePlaylist(playlist, url):
     
     reading = False
 
-    url_params = re.sub(".+(\.m3u8.*)","\\1", url)
-    url = url[:url.rindex("/")]
+    url_params = re.sub(".+(\.m3u8.*)","\\1", stream_url)
+    url_prefix = stream_url[:stream_url.rindex("/")]
     
     for line in playlist:
         bandwidth = BANDWIDTH_PATTERN.search(line)
@@ -137,7 +136,7 @@ def RegeneratePlaylist(playlist, url):
                 continue
             else:
                 if not line.startswith('http'):
-                    max_bandwidth_url = url + '/' + line
+                    max_bandwidth_url = url_prefix + '/' + line
                 else:
                     max_bandwidth_url = line
                 reading = False
