@@ -89,6 +89,7 @@ def PlayVideo(url, platform):
         raise Ex.MediaNotAvailable
     
     if platform == ClientPlatform.iOS:
+        Log("JTDEBUG : iOS, perhaps %s won't work for live stream?" % stream_url)
         return Redirect(stream_url)
     else:
         original_playlist = HTTP.Request(stream_url).content
@@ -115,7 +116,7 @@ def GetStream(url):
 ######################################
 def RegeneratePlaylist(playlist, url):
 
-    Log("JTDEBUG : playlist:%s" % playlist)
+    # Log("JTDEBUG : playlist:%s" % playlist)
 
     max_bandwidth = 0
     max_bandwidth_meta = ""
@@ -123,6 +124,8 @@ def RegeneratePlaylist(playlist, url):
     new_playlist = ""
     
     reading = False
+
+    url_params = re.sub(".+(\.m3u8.*)","\\1", url)
     
     for line in playlist:
         bandwidth = BANDWIDTH_PATTERN.search(line)
@@ -145,7 +148,9 @@ def RegeneratePlaylist(playlist, url):
                 max_bandwidth_meta = line
                 reading = True
     
-
+    if max_bandwidth_url.endswith(".m3u8"):
+        # Add url params
+        max_bandwidth_url = re.sub("\.m3u8", url_params, max_bandwidth_url)
     new_playlist = new_playlist + max_bandwidth_meta + '\n'
     new_playlist = new_playlist + max_bandwidth_url + '\n'
 
