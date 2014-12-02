@@ -88,8 +88,8 @@ def PlayVideo(url, platform):
     except Exception as e:
         raise Ex.MediaNotAvailable
     
-    if platform == ClientPlatform.iOS and stream_url.endswith(".m3u8"):
-        # iOS and no url params
+    if platform == ClientPlatform.iOS:
+        Log("JTDEBUG : Assuming iOS manages necessary url params if necessary:%s" % stream_url)
         return Redirect(stream_url)
     else:
         return RegeneratePlaylist(stream_url)
