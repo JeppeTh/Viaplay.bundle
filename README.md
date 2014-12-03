@@ -27,6 +27,7 @@ https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 # Changes
 03/12/2014
 + Added experimental option to possibly solve live issues
++ Added option to let player decide bit rate
 
 01/12/2014
 + Fix new protection in live streams

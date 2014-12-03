@@ -33,6 +33,12 @@
     "default": "false"
   },
   {
+    "id": "playerDecideBitRate",
+    "type": "bool",
+    "label": "Let Player decide bitrate",
+    "default": "false"
+  },
+  {
     "id": "experimental",
     "type": "bool",
     "label": "Experimental player for live sports",
