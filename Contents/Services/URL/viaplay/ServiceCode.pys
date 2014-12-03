@@ -156,7 +156,31 @@ def RegeneratePlaylist(stream_url):
 
     Log("JTDEBUG : new_playlist:%s" % new_playlist)
 
+    if len(url_params) > 5 and Prefs['experimental']:
+        return ReadM3u8(url_prefix, url_params, max_bandwidth_url)
     return new_playlist
+
+######################################
+def ReadM3u8(url_prefix, url_params, m3u8_url):
+
+    # Experimental...
+
+    url_params = re.sub("^\.m3u8", "", url_params)
+
+    m3u8_content = HTTP.Request(m3u8_url).content.splitlines()
+
+    new_content = ""
+    
+    for line in m3u8_content:
+        if ".ts" in line:
+            if not line.startswith('http'):
+                line = url_prefix + '/' + line
+            line = re.sub("\.ts.*", ".ts%s" % url_params, line)
+        new_content = new_content + line + '\n'
+
+    # Log("JTDEBUG : new_content:%s" % new_content)
+
+    return new_content
 
 ####################################################################################################
 def NormalizeURL(url):

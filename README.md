@@ -25,6 +25,9 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+03/12/2014
++ Added experimental option to possibly solve live issues
+
 01/12/2014
 + Fix new protection in live streams
 

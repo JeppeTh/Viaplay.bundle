@@ -31,5 +31,11 @@
     "type": "bool",
     "label": "I'm over 18",
     "default": "false"
+  },
+  {
+    "id": "experimental",
+    "type": "bool",
+    "label": "Experimental player for live sports",
+    "default": "false"
   }
 ]
