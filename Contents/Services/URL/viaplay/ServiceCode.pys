@@ -68,44 +68,61 @@ def MetadataObjectForURL(url):
 
 ####################################################################################################
 def MediaObjectsForURL(url):
+
+    if Client.Platform == ClientPlatform.iOS or Prefs['playerDecideBitRate']:
+        cb = PlayIndirect
+    else:
+        cb = PlayDirect
+
     # Seems some setups (chromecast?) causes url to be urlencoded...
     return [
       MediaObject(
-                  parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url = urllib.unquote(url), platform = Client.Platform)))],
+                  parts = [PartObject(key=HTTPLiveStreamURL(Callback(cb, url = urllib.unquote(url))))],
                   audio_channels = 2,
                   optimized_for_streaming = True
       )
     ]
 
-def PlayVideo(url, platform):
+####################################################################################################
+@indirect
+def PlayIndirect(url):
+
+    stream_url = GetStream(url)
+
+    Log("JTDEBUG : Assuming (iOS) manages necessary url params if necessary:%s" % stream_url)
+
+    return IndirectResponse(
+        VideoClipObject,
+        key = HTTPLiveStreamURL(url = stream_url)
+        )
+
+####################################################################################################
+def PlayDirect(url):
+
+    return RegeneratePlaylist(GetStream(url))
+
+####################################################################################################
+def GetStream(url):
+
     Login()
 
     try:
-        stream_url = []
-        stream_url = GetStream(url)
+        item = MyJson(url)
+        item = item['_embedded']['viaplay:blocks']
+        item = item[0]['_embedded']['viaplay:product']
+
+        stream = item['_links']['viaplay:stream']['href']
+        stream = re.sub("(.+)({\\?deviceId.+userAgent})(.+)", "\\1?deviceId=deviceId&deviceName=deviceName&deviceType=deviceType&userAgent=userAgent\\3", stream)
+        stream_item = MyJson(stream)
+        if 'message' in stream_item and stream_item['message'] == "PG challenge" and Prefs['pin'] and Prefs['pin'] != "":
+            stream_item = MyJson(stream + "&pgPin=" + Prefs['pin'])
+        stream_url = stream_item['_links']['viaplay:playlist']['href']
         if len(stream_url) == 0:
             raise Ex.MediaNotAvailable
+        return stream_url
+
     except Exception as e:
         raise Ex.MediaNotAvailable
-    
-    if platform == ClientPlatform.iOS or Prefs['playerDecideBitRate']:
-        Log("JTDEBUG : Assuming (iOS) manages necessary url params if necessary:%s" % stream_url)
-        return Redirect(stream_url)
-    else:
-        return RegeneratePlaylist(stream_url)
-
-def GetStream(url):
-
-    item = MyJson(url)
-    item = item['_embedded']['viaplay:blocks']
-    item = item[0]['_embedded']['viaplay:product']
-
-    stream = item['_links']['viaplay:stream']['href']
-    stream = re.sub("(.+)({\\?deviceId.+userAgent})(.+)", "\\1?deviceId=deviceId&deviceName=deviceName&deviceType=deviceType&userAgent=userAgent\\3", stream)
-    stream_item = MyJson(stream)
-    if 'message' in stream_item and stream_item['message'] == "PG challenge" and Prefs['pin'] and Prefs['pin'] != "":
-        stream_item = MyJson(stream + "&pgPin=" + Prefs['pin'])
-    return stream_item['_links']['viaplay:playlist']['href']
 
 
 ######################################
