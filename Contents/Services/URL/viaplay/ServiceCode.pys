@@ -69,37 +69,32 @@ def MetadataObjectForURL(url):
 ####################################################################################################
 def MediaObjectsForURL(url):
 
-    if Client.Platform == ClientPlatform.iOS or Prefs['playerDecideBitRate']:
-        cb = PlayIndirect
-    else:
-        cb = PlayDirect
-
-    # Seems some setups (chromecast?) causes url to be urlencoded...
     return [
-      MediaObject(
-                  parts = [PartObject(key=HTTPLiveStreamURL(Callback(cb, url = urllib.unquote(url))))],
-                  audio_channels = 2,
-                  optimized_for_streaming = True
-      )
-    ]
+        MediaObject(
+            # Seems some setups (chromecast?) causes url to be urlencoded...
+            parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url=urllib.unquote(url), platform=Client.Platform)))],
+            audio_channels = 2,
+            optimized_for_streaming = True
+            )
+        ]
 
 ####################################################################################################
 @indirect
-def PlayIndirect(url):
+def PlayVideo(url, platform):
 
     stream_url = GetStream(url)
 
-    Log("JTDEBUG : Assuming (iOS) manages necessary url params if necessary:%s" % stream_url)
-
-    return IndirectResponse(
-        VideoClipObject,
-        key = HTTPLiveStreamURL(url = stream_url)
-        )
-
-####################################################################################################
-def PlayDirect(url):
-
-    return RegeneratePlaylist(GetStream(url))
+    if platform == ClientPlatform.iOS or Prefs['playerDecideBitRate']:
+        Log("JTDEBUG : Assuming (iOS) manages necessary url params if necessary:%s" % stream_url)
+        return IndirectResponse(
+            VideoClipObject,
+            key = HTTPLiveStreamURL(url = stream_url)
+            )
+    else:
+        return IndirectResponse(
+            VideoClipObject,
+            key = HTTPLiveStreamURL(Callback(RegeneratePlaylist, stream_url=stream_url))
+            )
 
 ####################################################################################################
 def GetStream(url):
@@ -173,26 +168,23 @@ def RegeneratePlaylist(stream_url):
 
     Log("JTDEBUG : new_playlist:%s" % new_playlist)
 
-    if len(url_params) > 5 and Prefs['experimental']:
-        return ReadM3u8(url_prefix, url_params, max_bandwidth_url)
+    if Prefs['experimental']:
+        return ReadM3u8(url_prefix, max_bandwidth_url)
+
     return new_playlist
 
 ######################################
-def ReadM3u8(url_prefix, url_params, m3u8_url):
+def ReadM3u8(url_prefix, m3u8_url):
 
     # Experimental...
-
-    url_params = re.sub("^\.m3u8", "", url_params)
 
     m3u8_content = HTTP.Request(m3u8_url).content.splitlines()
 
     new_content = ""
     
     for line in m3u8_content:
-        if ".ts" in line:
-            if not line.startswith('http'):
-                line = url_prefix + '/' + line
-            line = re.sub("\.ts.*", ".ts%s" % url_params, line)
+        if ".ts" in line and not line.startswith('http'):
+            line = url_prefix + '/' + line
         new_content = new_content + line + '\n'
 
     # Log("JTDEBUG : new_content:%s" % new_content)

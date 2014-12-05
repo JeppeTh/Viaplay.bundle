@@ -41,7 +41,7 @@
   {
     "id": "experimental",
     "type": "bool",
-    "label": "Experimental player for live sports",
+    "label": "Experimental player",
     "default": "false"
   }
 ]
