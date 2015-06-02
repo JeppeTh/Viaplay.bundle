@@ -48,6 +48,7 @@ def Start():
     VideoClipObject.thumb = R(ICON)
     VideoClipObject.art = R(ART)
 
+    HTTP.CacheTime = CACHE_1HOUR
     HTTP.Headers['User-Agent'] = IPAD_UA
 
     site = Prefs['site'].lower()
