@@ -42,6 +42,22 @@ def MetadataObjectForURL(url):
         thumb = item['images']['boxart']['url']
     if 'landscape' in item['images']:
         thumb   = item['images']['landscape']['url']
+    rating = None
+    if 'imdb' in item:
+        rating = float(item['imdb']['rating'])
+
+    if Client.Platform and "Samsung" in Client.Platform:
+        separator = "<br>"
+    else:
+        separator = "\n"
+
+    summary = unicode(item['synopsis'])
+
+    try:
+        summary = "%s %sMedverkande: %s" % (summary,separator,", ".join(item['people']['actors']))
+        summary = unicode(summary)
+    except Exception as e:
+        pass
 
     if item_type == 'episode':
         if 'episodeNumber' in item['series']:
@@ -51,7 +67,7 @@ def MetadataObjectForURL(url):
         return EpisodeObject(
             title    = unicode(item['title']),
             show     = unicode(item['series']['title']),
-            summary  = unicode(item['synopsis']),
+            summary  = summary,
             duration = duration,
             thumb    = thumb,
             index    = index,
@@ -61,7 +77,8 @@ def MetadataObjectForURL(url):
     else:
         return VideoClipObject(
             title    = unicode(item['title']),
-            summary  = unicode(item['synopsis']),
+            summary  = summary,
+            rating   = rating,
             thumb    = thumb,
             duration = duration
             )

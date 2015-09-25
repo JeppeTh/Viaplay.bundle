@@ -465,8 +465,25 @@ def MakeMovieObject(item=[]):
         for director in content['people']['directors']:
             directors.append(unicode(director))
 
+    rating = None
+    if 'imdb' in content:
+        rating = float(content['imdb']['rating'])
+
+    if Client.Platform and "Samsung" in Client.Platform:
+        separator = "<br>"
+    else:
+        separator = "\n"
+
+    summary = unicode(content['synopsis'])
+
+    try:
+        summary = "%s %sMedverkande: %s" % (summary,separator,", ".join(content['people']['actors']))
+        summary = unicode(summary)
+    except Exception as e:
+        pass
+
     return MovieObject(title          = AddEpgInfo(content['title'], item),
-                       summary        = content['synopsis'],
+                       summary        = summary,
                        thumb          = thumb,
                        art            = art,
                        url            = item['_links']['viaplay:page']['href'],
@@ -475,7 +492,8 @@ def MakeMovieObject(item=[]):
                        countries      = countries,
                        genres         = genres,
                        directors      = directors,
-                       content_rating = content['parentalRating'] if 'parentalRating' in content else None
+                       content_rating = content['parentalRating'] if 'parentalRating' in content else None,
+                       rating         = rating
                        )
 
 def AddEpgInfo(title, item=[]):
@@ -527,9 +545,14 @@ def MakeSeriesObject(item=[]):
         content_rating = content['parentalRating']
     else:
         content_rating = None
+
+    rating = None
+    if 'imdb' in content:
+        rating = float(content['imdb']['rating'])
     
     return TVShowObject(key            = Callback(Serie, title2=title, url=url),
                         rating_key     = url,
+                        rating         = rating,
                         content_rating = content_rating,
                         genres         = genres,
                         title          = title,
