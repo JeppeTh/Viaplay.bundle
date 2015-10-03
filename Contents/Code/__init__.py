@@ -149,7 +149,7 @@ def Category(title2, url, sort = True, offset=0):
                     sort_title = title2 + " - " + sorting['title']
                     sort_url   = url + "?sort=" + sorting['id']
                     oc.add(CreateDirObject(unicode(sorting['title']),
-                                           Callback(Category, title2=sort_title, url=sort_url),
+                                           Callback(Category, title2=sort_title, url=sort_url, sort=False),
                                            )
                            )
     return ContinueCategory(oc, next_url, offset)

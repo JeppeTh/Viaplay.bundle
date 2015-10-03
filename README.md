@@ -25,6 +25,15 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+03/10/2015
++ Added sort variants within Categories.
+
+25/09/2015
++ Added some more Metadata - rating and actors.
+
+02/06/2015
++ Use cache
+
 03/12/2014
 + Added experimental option to possibly solve live issues
 + Added option to let player decide bit rate
