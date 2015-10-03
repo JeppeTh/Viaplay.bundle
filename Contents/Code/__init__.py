@@ -134,6 +134,24 @@ def Category(title2, url, sort = True, offset=0):
         next_url = url+"?sort=alphabetical"
     else:
         next_url = url
+    # Add sorting variants
+    if offset == 0 and not "sort=" in url:
+        category_main = MyJson(url)
+        if 'viaplay:sortings' in category_main['_links']:
+            for sorting in category_main['_links']['viaplay:sortings']:
+                if sorting['id'] == "most_popular":
+                    # This is what we want as default
+                    next_url = sorting['href']
+                elif "live_s" in sorting['id']:
+                    # Skip live schedules
+                    continue;
+                else:
+                    sort_title = title2 + " - " + sorting['title']
+                    sort_url   = url + "?sort=" + sorting['id']
+                    oc.add(CreateDirObject(unicode(sorting['title']),
+                                           Callback(Category, title2=sort_title, url=sort_url),
+                                           )
+                           )
     return ContinueCategory(oc, next_url, offset)
 
 def ContinueCategory(oc, next_url, offset=0):
