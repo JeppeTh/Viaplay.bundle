@@ -99,9 +99,9 @@ def MediaObjectsForURL(url):
 @indirect
 def PlayVideo(url, platform):
 
-    stream_url = GetStream(url)
+    stream_url, is_live = GetStream(url)
 
-    if platform == ClientPlatform.iOS or Prefs['playerDecideBitRate']:
+    if platform == ClientPlatform.iOS or Prefs['playerDecideBitRate'] or is_live:
         Log("JTDEBUG : Assuming (iOS) manages necessary url params if necessary:%s" % stream_url)
         return IndirectResponse(
             VideoClipObject,
@@ -126,12 +126,16 @@ def GetStream(url):
         stream = item['_links']['viaplay:stream']['href']
         stream = re.sub("(.+)({\\?deviceId.+userAgent})(.+)", "\\1?deviceId=deviceId&deviceName=deviceName&deviceType=deviceType&userAgent=userAgent\\3", stream)
         stream_item = MyJson(stream)
+        try:
+            is_live = (stream_item['product']['content']['type'] == 'live')
+        except:
+            is_live = False
         if 'message' in stream_item and stream_item['message'] == "PG challenge" and Prefs['pin'] and Prefs['pin'] != "":
             stream_item = MyJson(stream + "&pgPin=" + Prefs['pin'])
         stream_url = stream_item['_links']['viaplay:playlist']['href']
         if len(stream_url) == 0:
             raise Ex.MediaNotAvailable
-        return stream_url
+        return stream_url, is_live
 
     except Exception as e:
         raise Ex.MediaNotAvailable

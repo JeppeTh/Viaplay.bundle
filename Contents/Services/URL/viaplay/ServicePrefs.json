@@ -35,13 +35,13 @@
   {
     "id": "playerDecideBitRate",
     "type": "bool",
-    "label": "Let Player decide bitrate",
+    "label": "Let Player decide bitrate (N/A for live streams)",
     "default": "false"
   },
   {
     "id": "experimental",
     "type": "bool",
-    "label": "Experimental player",
+    "label": "Experimental player (N/A for live streams)",
     "default": "false"
   }
 ]
