@@ -25,6 +25,9 @@ Now Plex should see the Viaplay plugin.
 https://forums.plex.tv/index.php/topic/82378-viaplay-senodkfi/
 
 # Changes
+01/07/2016
++ Added debug for failing Login
+
 08/04/2016
 + Adapt to Live Streams which now uses HLS version 4
 
