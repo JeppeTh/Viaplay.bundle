@@ -1,4 +1,4 @@
-import re, shutil, urllib
+import re, shutil, urllib, datetime
 from lxml.etree import HTMLParser, parse, tostring
 import StringIO
 
@@ -32,11 +32,21 @@ def MetadataObjectForURL(url):
         thumb = None
 
     air_date = item['system']['availability']['start']
-    item     = item['content']
     try:
-        duration = int(item['duration']['milliseconds'])
-    except:
+        if 'duration' in item['content']:
+            duration = int(item['content']['duration']['milliseconds'])
+        elif 'epg' in item:
+            starttime = Datetime.ParseDate(item['epg']['streamStart'].split('.')[0])
+            endtime   = Datetime.ParseDate(item['epg']['streamEnd'].split('.')[0])
+            if Datetime.Now() > starttime and endtime > Datetime.Now():
+                diff = int((Datetime.Now() - starttime).total_seconds()*1000)
+            else:
+                diff = 0
+            duration = int((endtime - starttime).total_seconds()*1000) - diff
+    except Exception as e:
         duration = None
+        pass
+    item  = item['content']
     thumb = None
     if 'boxart' in item['images']:
         thumb = item['images']['boxart']['url']
@@ -124,15 +134,20 @@ def GetStream(url):
         item = item[0]['_embedded']['viaplay:product']
 
         stream = item['_links']['viaplay:stream']['href']
-        stream = re.sub("(.+)({\\?deviceId.+userAgent})(.+)", "\\1?deviceId=deviceId&deviceName=deviceName&deviceType=deviceType&userAgent=userAgent\\3", stream)
+        stream = re.sub("(.+)({\\?deviceId.+availabilityContext})(.+)", "\\1?deviceId=deviceId&deviceName=deviceName&deviceType=deviceType&userAgent=userAgent&availabilityContext=availabilityContext\\3", stream)
         stream_item = MyJson(stream)
+        if 'message' in stream_item and Prefs['ageVerification'] == True and stream_item['message'] == "PG challenge" and Prefs['pin'] and Prefs['pin'] != "":
+            stream_item = MyJson(stream + "&pgPin=" + Prefs['pin'])
         try:
             is_live = (stream_item['product']['content']['type'] == 'live')
         except:
             is_live = False
-        if 'message' in stream_item and stream_item['message'] == "PG challenge" and Prefs['pin'] and Prefs['pin'] != "":
-            stream_item = MyJson(stream + "&pgPin=" + Prefs['pin'])
-        stream_url = stream_item['_links']['viaplay:playlist']['href']
+        if stream_item['_links']['viaplay:encryptedPlaylist']:
+            stream_url = stream_item['_links']['viaplay:encryptedPlaylist']['href']
+        elif stream_item['_links']['viaplay:media']:
+            stream_url = stream_item['_links']['viaplay:media']['href']
+        else:
+            stream_url = stream_item['_links']['viaplay:fallbackMedia']['href']
         if len(stream_url) == 0:
             raise Ex.MediaNotAvailable
         return stream_url, is_live

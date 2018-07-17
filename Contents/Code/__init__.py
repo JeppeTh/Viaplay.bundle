@@ -101,11 +101,11 @@ def Section(title2, url):
                 continue
             title = unicode(block['title'])
             if 'viaplay:seeAll' in block['_links']:
-                url = block['_links']['viaplay:seeAll']['href']
+                category_url = block['_links']['viaplay:seeAll']['href']
             else:
-                url = block['_links']['self']['href']
+                category_url = block['_links']['self']['href']
             oc.add(CreateDirObject(title,
-                                   Callback(Category, title2=title, url=url, sort=False),
+                                   Callback(Category, title2=title, url=category_url, sort=False),
                                    )
                    )
 
@@ -120,8 +120,11 @@ def Section(title2, url):
                     continue
             if duplicate:
                 continue
+            # In case of a sub section avoid sorting since it seems 
+            # to mess up sorting in its categories
+            sort = (url in category['href'])
             oc.add(CreateDirObject(title,
-                                   Callback(Category, title2=title, url=category['href']),
+                                   Callback(Category, title2=title, url=category['href'], sort=sort),
                                    )
                    )
     return oc
@@ -361,6 +364,12 @@ def IsNotDrm(item=[]):
     except:
         return True
 
+def IsRental(item=[]):
+    try:
+        return item['system']['availability']['planInfo']['isRental']
+    except:
+        return False 
+
 def AnyNonDrm(items, next_url):
     for item in items:
         if IsNotDrm(item):
@@ -385,10 +394,10 @@ def BrowseHits(hit=(), oc=None):
     index = 0
     for obj in objects:
         index = index+1
-        if IsNotDrm(obj):
-            if search_type == 'series':
-                oc.add(MakeSeriesObject(obj))
-            elif search_type == 'episode':
+        if IsNotDrm(obj) and not IsRental(obj):
+            if obj['type'] == 'series':
+                oc.add(MakeSeriesObject(obj, title2==""))
+            elif obj['type'] == 'episode':
                 content = obj['content']
                 title   = unicode(content['title'])
                 if 'season' in content['series']:
@@ -398,8 +407,8 @@ def BrowseHits(hit=(), oc=None):
                     title = title + " - " + EPISODE_TRANSLATED + \
                         " %i" % content['series']['episodeNumber']
                 oc.add(MakeEpisodeObject(title, obj))
-            elif search_type == 'movie' or search_type == 'sport':
-                oc.add(MakeMovieObject(obj))
+            elif obj['type'] == 'movie' or obj['type'] == 'sport':
+                oc.add(MakeMovieObject(obj, title2==""))
             if len(oc) == MAX_LEN:
                 break
 
@@ -473,6 +482,7 @@ def MakeMovieObject(item=[]):
     except:
         countries = []
 
+    title, duration = AddEpgInfo(content['title'], duration, item)
     genres = []
     if 'viaplay:genres' in item['_links']:
         for genre in item['_links']['viaplay:genres']:
@@ -481,8 +491,7 @@ def MakeMovieObject(item=[]):
     directors = []
     if 'people' in content and 'directors' in content['people']:
         for director in content['people']['directors']:
-            directors.append(unicode(director))
-
+            directors.append({'role':"director", 'name':unicode(director)})
     rating = None
     if 'imdb' in content:
         rating = float(content['imdb']['rating'])
@@ -500,7 +509,7 @@ def MakeMovieObject(item=[]):
     except Exception as e:
         pass
 
-    return MovieObject(title          = AddEpgInfo(content['title'], item),
+    return MovieObject(title          = title,
                        summary        = summary,
                        thumb          = thumb,
                        art            = art,
@@ -509,12 +518,12 @@ def MakeMovieObject(item=[]):
                        year           = year,
                        countries      = countries,
                        genres         = genres,
-                       directors      = directors,
                        content_rating = content['parentalRating'] if 'parentalRating' in content else None,
-                       rating         = rating
+                       rating         = rating,
+                       directors      = directors
                        )
 
-def AddEpgInfo(title, item=[]):
+def AddEpgInfo(title, duration, item=[]):
     if 'epg' in item:
         start_time = datetime.datetime.strptime(item['epg']['start'], '%Y-%m-%dT%H:%M:%S.000Z')
         end_time = datetime.datetime.strptime(item['epg']['streamEnd'], '%Y-%m-%dT%H:%M:%S.000Z')
@@ -533,9 +542,16 @@ def AddEpgInfo(title, item=[]):
                 epg = start_time.strftime('%A %H:%M')
             else:
                 epg = start_time.strftime('%b %d %H:%M')
+        
+        # Duration
+        if now > start_time and end_time > now:
+            diff = int((now - start_time).total_seconds()*1000)
+        else:
+            diff = 0
+        duration = int((end_time - start_time).total_seconds()*1000) - diff
 
-        return '%s: %s' % (epg, title)
-    return title
+        return '%s: %s' % (epg, title), duration
+    return title, duration
 
 def MakeSeriesObject(item=[]):
     content = item['content']
