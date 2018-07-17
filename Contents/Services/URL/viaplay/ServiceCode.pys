@@ -147,7 +147,7 @@ def GetStream(url):
         elif stream_item['_links']['viaplay:media']:
             stream_url = stream_item['_links']['viaplay:media']['href']
         else:
-            stream_url = stream_item['_links']['viaplay:fallbackMedia']['href']
+            stream_url = stream_item['_links']['viaplay:fallbackMedia'][0]['href']
         if len(stream_url) == 0:
             raise Ex.MediaNotAvailable
         return stream_url, is_live
